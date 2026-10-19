@@ -1,0 +1,307 @@
+
+<div id="wrapAg">
+<header class="site">
+ <div class="wrap">
+  <a class="logo" href="#agencias" aria-label="Yacar para agencias, inicio">%%LOGO%%Yacar <span class="para">AGENCIAS</span></a>
+  <nav aria-label="Secciones">
+   <a class="sec-link" href="#agencias/como">Cómo funciona</a>
+   <a class="sec-link" href="#agencias/precios">Precios</a>
+   <a class="sec-link" href="#agencias/zona">Tu zona</a>
+   <a class="sec-link" href="#agencias/preguntas">Preguntas</a>
+   <a class="navsub" href="#agencias/subasta" data-nav="subasta">Subasta de hoy <span class="envivo"><i></i>En vivo</span></a>
+   <a class="solo-ok" href="#agencias/ofertas" data-nav="ofertas">Mis ofertas<span class="navbadge" id="navSuperado" hidden></span></a>
+   <a class="solo-in" href="#agencias/estado" data-nav="estado">Mi agencia</a>
+   <button type="button" class="salir solo-in" id="agSalir">Salir</button>
+   <a class="solo-out ingresar" href="#agencias/ingresar">Ingresar</a>
+   <a class="vend" href="#vender">Quiero vender mi auto</a>
+  </nav>
+ </div>
+</header>
+
+<main id="vInicio">
+ <section class="heroband">
+  <div class="wrap">
+   <div class="herocopy">
+    <h1>Autos de particulares, listos para comprar.</h1>
+    <p class="tagline">Una subasta por día, de 10 a 19 h.</p>
+    <p class="lead">Autos de tu zona con fotos y papeles revisados. Ofertás desde el celular y salís solo a buscar los que ganaste.</p>
+    <ul class="ticks">
+     <li>%%TICK%%Solo autos de tu zona</li>
+     <li>%%TICK%%Papeles revisados</li>
+     <li>%%TICK%%Sin abono</li>
+    </ul>
+    <div class="herobtns" id="heroBtns"></div>
+    <p class="small">1,5% del auto (mínimo $200 mil), solo si comprás. <a href="#agencias/precios">Ver precios</a></p>
+   </div>
+   <div class="herocard" id="heroCard"></div>
+  </div>
+ </section>
+
+ <section class="sec" id="problema">
+  <div class="wrap">
+   <span class="kicker">Lo que nos contaron las agencias</span>
+   <h2>Conseguir stock no debería llevarte el día.</h2>
+   <div class="grid3">
+    <div class="card pain"><div class="big">1,5 h</div><p>por día mirando avisos.</p></div>
+    <div class="card pain"><div class="big">2 o 3</div><p>autos por día para ir a ver, y a veces no cerrás ninguno.</p></div>
+    <div class="card pain"><div class="big">"Lo pienso"</div><p>Vendedores que se echan atrás cuando llegás.</p></div>
+   </div>
+   <div class="punch">%%TICKBIG%%<span>Con Yacar vas a buscar autos que <b>ya ganaste</b>, con el precio aceptado.</span></div>
+  </div>
+ </section>
+
+ <section class="sec alt" id="como">
+  <div class="wrap">
+   <span class="kicker">Cómo funciona</span>
+   <h2>Cuatro pasos, todos los días.</h2>
+   <div class="grid4">
+    <div class="card step"><span class="n">1</span><h3>Elegís tu zona</h3><p>Hasta dónde vas a buscar autos.</p></div>
+    <div class="card step"><span class="n">2</span><h3>Te llegan los autos</h3><p>A las 9 h, por WhatsApp, los de tu zona.</p></div>
+    <div class="card step"><span class="n">3</span><h3>Ofertás tu máximo</h3><p>De 10 a 19 h. Nadie ve tu oferta.</p></div>
+    <div class="card step"><span class="n">4</span><h3>Vas a buscarlo</h3><p>Con el contacto del vendedor, en 48 h hábiles.</p></div>
+   </div>
+  </div>
+ </section>
+
+ <section class="sec" id="precios">
+  <div class="wrap">
+   <span class="kicker">Precios</span>
+   <h2>Sin abono. Pagás solo cuando comprás.</h2>
+   <div class="tiers" style="grid-template-columns:minmax(0,1fr)">
+    <div class="card tier base" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 32px"><div><h3>Un solo precio</h3><p class="from">Desde tu primera compra</p></div><div class="pct" style="margin-top:0">1,5%</div><p class="cap" style="margin-top:0;font-size:17px">del precio de compra del auto,<br>con un mínimo de $200 mil por auto.</p></div>
+   </div>
+   <div class="card calc">
+    <div style="display:flex;flex-direction:column;gap:18px">
+     <h3 style="font-size:26px;color:var(--accent)">Calculá tu fee</h3>
+     <div class="field">
+      <label for="cPrecio">Precio de compra del auto</label>
+      <div class="val num" id="cPrecioV">$ 15.000.000</div>
+      <input type="range" id="cPrecio" min="3000000" max="60000000" step="100000" value="15000000">
+     </div>
+     <p style="color:var(--muted);font-size:15px;margin:0">Hasta $ 13,3 M se aplica el mínimo de $ 200 mil.</p>
+    </div>
+    <div class="calcout" aria-live="polite">
+     <small>Tu fee por este auto</small>
+     <div class="fee num" id="cFee">$ 225.000</div>
+     <small id="cPct">1,5% del precio de compra</small>
+     <button class="btn pri" data-go="alta" style="margin-top:10px">Sumar mi agencia</button>
+    </div>
+   </div>
+   <div class="proto" style="margin-top:16px"><span class="ptag">Solo prototipo</span> Fee para el prototipo (11/10): 1,5% con mínimo de $200 mil. Puede cambiar: validarlo con agencias (COM-01). Ver PLAN_LANDING_AGENCIAS.md, sección 8.</div>
+  </div>
+ </section>
+
+ <section class="sec alt" id="operaciones">
+  <div class="wrap">
+   <span class="kicker">Operaciones cerradas</span>
+   <h2>Así compran las agencias en Yacar.</h2>
+   <p class="intro">La subasta y los mínimos los ven solo las agencias aprobadas.</p>
+   <div class="ops" id="opsLanding"></div>
+   <div class="proto" style="margin-top:16px"><span class="ptag">Solo prototipo</span> Ejemplos ilustrativos: todavía no hay operaciones reales. Cuando arranque el piloto, acá van las de verdad, sin datos de los vendedores.</div>
+   <div class="herobtns" style="margin-top:22px"><button class="btn pri" data-go="alta">Sumar mi agencia</button></div>
+  </div>
+ </section>
+
+ <section class="sec alt" id="ficha">
+  <div class="wrap">
+   <span class="kicker">Subasta de hoy · solo agencias aprobadas</span>
+   <h2>Todo para ofertar sin ir a verlo.</h2>
+   <p class="intro">10 fotos, lo que declara el dueño, lo que revisamos nosotros y el mínimo del vendedor.</p>
+   <div class="card ficha">
+    <div class="gal">
+     <div class="main" id="fichaMain"><span class="tag">Foto</span></div>
+     <div class="thumbs" id="fichaThumbs"></div>
+    </div>
+    <div class="fdata">
+     <div>
+      <h3>Peugeot 208 1.6 Allure</h3>
+      <p class="ver">2021 · 61.000 km · Nafta · Manual · 2.º dueño</p>
+     </div>
+     <div class="pricebox">
+      <div class="min"><span>Mínimo del vendedor</span><b class="num">$ 15,9 M</b></div>
+      <div><span>Ofertas hasta ahora</span><b class="num">4</b></div>
+     </div>
+     <div class="zonebox">
+      <svg viewBox="0 0 110 84" id="fichaMap" aria-label="Mapa de la zona del auto"></svg>
+      <div><b>Gral. San Martín</b><span class="num" id="fichaDist"></span><small>La dirección te llega con el contacto.</small></div>
+     </div>
+     <div class="cols2">
+      <div class="box"><h4>Declarado por el dueño</h4><ul id="declarado"></ul></div>
+      <div class="box verif"><h4>Revisado por Yacar</h4><ul id="revisado"></ul></div>
+     </div>
+     <div class="box informe"><h4>Informe con el que entra a la subasta</h4><dl id="informeAuto"></dl>
+      <p class="fuente">No es un certificado. Patente, chasis y contacto te llegan si ganás.</p></div>
+     <button class="btn pri block" disabled>Ofertar</button>
+     <div class="proto"><span class="ptag">Solo prototipo</span> La pantalla para ofertar se arma después (PROPUESTA_AGENCIAS_Y_SUBASTA.md).</div>
+    </div>
+   </div>
+   <!-- 16/10/2026 (D-44): ficha para la transferencia. Le llega a la agencia que ganó, con el contacto, al pagar el fee. Respeta PRIVACIDAD_RESUMEN_AGENCIA.md (D-38): sin DNI ni domicilio del titular. -->
+   <details class="card transf" id="transf">
+    <summary class="transf-head"><div><span class="kicker">Si ganás este auto</span><h3>Ficha para la transferencia</h3>
+     <p>Quién firma, dónde y qué papeles están listos. Tocá para verla.</p></div></summary>
+    <div class="cols2">
+     <div class="box"><h4>Vendedor y auto</h4><dl class="trdl" id="trVend"></dl></div>
+     <div class="box"><h4>Quién firma y dónde</h4><dl class="trdl" id="trFirma"></dl></div>
+    </div>
+    <div class="box informe"><h4>Papeles para el día de la firma</h4><dl id="trPapeles"></dl>
+     <p class="fuente">El DNI y el domicilio del vendedor los ves en la firma.</p></div>
+    <button class="btn pri block" disabled>Descargar la ficha (PDF)</button>
+    <div class="proto"><span class="ptag">Solo prototipo</span> Datos de ejemplo. En la web real aparece en "Ganaste", después de pagar el fee.</div>
+   </details>
+  </div>
+ </section>
+
+ <section class="sec" id="zona">
+  <div class="wrap two">
+   <div>
+    <span class="kicker">Tu zona</span>
+    <h2>Solo autos a los que te sirve ir.</h2>
+    <p class="intro">Elegí un radio desde tu local y ajustalo barrio por barrio.</p>
+   </div>
+   <div class="mapwrap">
+    <div class="radios chips" id="landRadios"></div>
+    <svg class="map" id="landMap" data-vivo="1" role="img" aria-label="Mapa esquemático de AMBA con tu zona de compra"></svg>
+    <div class="legend"><span><i class="sq on"></i>En tu zona</span><span><i class="sq"></i>Fuera de tu zona</span><span><i style="background:#123F2C;border-radius:2px"></i>Tu local</span></div>
+    <p class="mapnota">Divisiones aproximadas, para ubicarte.</p>
+    <p class="selsum" id="landSum" style="margin-top:6px"></p>
+   </div>
+  </div>
+ </section>
+
+ <section class="sec alt" id="avisos">
+  <div class="wrap two">
+   <div>
+    <span class="kicker">Avisos</span>
+    <h2>La subasta del día, en tu WhatsApp a las 9 h.</h2>
+    <p class="intro">Abre a las 10 h y cierra a las 19 h: ofertás cuando te queda cómodo.</p>
+    <ul class="ticks" style="color:var(--ink);flex-direction:column;margin-top:22px">
+     <li>%%TICKL%%Solo autos de tu zona y de lo que buscás</li>
+     <li>%%TICKL%%Recordatorio a las 18 h, una hora antes del cierre</li>
+    </ul>
+    <div class="herobtns" style="margin-top:24px"><button class="btn pri" data-go="alta">Quiero recibir el resumen</button></div>
+   </div>
+   <div><div class="wa" id="waLanding"></div></div>
+  </div>
+ </section>
+
+ <section class="sec" id="quien">
+  <div class="wrap">
+   <span class="kicker">Quién hace qué</span>
+   <h2>Nosotros revisamos. Vos comprás.</h2>
+   <div class="grid3">
+    <div class="card who us"><h3>Yacar</h3><ul>
+     <li>Verifica a cada agencia antes de dejarla ofertar.</li>
+     <li>Revisa fotos y papeles.</li>
+     <li>Opera la subasta y te pasa el contacto.</li>
+     <li>Revisa los ajustes si algo no estaba declarado.</li>
+    </ul></div>
+    <div class="card who"><h3>Tu agencia</h3><ul>
+     <li>Revisa el auto en la visita.</li>
+     <li>Le paga al vendedor.</li>
+     <li>Hace la transferencia con su gestor.</li>
+    </ul></div>
+    <div class="card who"><h3>El vendedor</h3><ul>
+     <li>Firma el 08 y hace la verificación policial.</li>
+     <li>Entrega llaves, cédula y título.</li>
+    </ul></div>
+   </div>
+   <div class="callout">
+    <div><h3>¿No tenés gestor? Yacar Gestión</h3><p>Hacemos la transferencia por un fee aparte.</p></div>
+    <span class="ptag">Idea a validar · precio a definir</span>
+   </div>
+  </div>
+ </section>
+
+ <section class="sec alt" id="verificacion">
+  <div class="wrap two" style="align-items:flex-start">
+   <div>
+    <span class="kicker">Agencias verificadas</span>
+    <h2>Del otro lado, solo agencias reales.</h2>
+    <p class="intro">Revisamos cada agencia a mano antes de que vea la subasta. Así competís con agencias que cumplen.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:22px">
+     <span class="badge none">Sin revisión</span><span class="badge rev">En revisión · hasta 48 h hábiles</span><span class="badge ok">Aprobada</span>
+    </div>
+   </div>
+   <div class="card" style="padding:24px"><ul class="vlist" id="vlistLanding"></ul></div>
+  </div>
+ </section>
+
+ <section class="sec" id="reglas">
+  <div class="wrap">
+   <span class="kicker">Reglas claras</span>
+   <h2>Si el auto está como se declaró, la compra se respeta.</h2>
+   <div class="grid3">
+    <div class="card rule"><h3>Subasta ciega</h3><p>Ponés tu máximo; si ganás, pagás $50 mil más que la segunda oferta.</p></div>
+    <div class="card rule"><h3>Venta automática</h3><p>Si llegás al mínimo, el auto es tuyo. Si no, el vendedor tiene 24 h para aceptar.</p></div>
+    <div class="card rule"><h3>Ajustes con fotos</h3><p>Solo por algo no declarado, y lo revisamos nosotros.</p></div>
+    <div class="card rule"><h3>Fee protegido</h3><p>Si el vendedor declaró mal o se echa atrás, te lo devolvemos.</p></div>
+    <div class="card rule"><h3>Compromiso de compra</h3><p>Si ganás y no comprás un auto como se declaró, perdés el fee.</p></div>
+    <div class="card rule"><h3>Todo por Yacar</h3><p>Cerrar por fuera tiene penalidad.</p></div>
+   </div>
+   <p style="margin-top:22px"><a href="#agencias/reglas">Ver las reglas completas de la subasta</a></p>
+  </div>
+ </section>
+
+ <section class="sec alt" id="preguntas">
+  <div class="wrap">
+   <span class="kicker">Preguntas frecuentes</span>
+   <h2>Lo que nos preguntan las agencias.</h2>
+   <div class="faq">
+    <details><summary>¿Por qué no veo la subasta?</summary><p>Solo la ven las agencias aprobadas. Sumá tu agencia y, cuando te aprobemos, entrás con tu email.</p></details>
+    <details><summary>¿Qué datos me piden para sumarme?</summary><p>CUIT, tu nombre, email y WhatsApp. Después, la dirección y el Google Maps del local, tu web o Instagram y los años en el rubro. Te llamamos antes de aprobarte.</p></details>
+    <details><summary>¿Puedo tomar autos en consignación?</summary><p>No. En Yacar las agencias compran el auto.</p></details>
+    <details><summary>¿Qué pasa si voy a verlo y no es como decía la ficha?</summary><p>Proponés un ajuste con fotos. Si el vendedor no acepta, no comprás y te devolvemos el fee.</p></details>
+    <details><summary>¿Puedo saber dónde está el auto antes de ganar?</summary><p>Ves la zona y la distancia aproximada. La dirección te llega al pagar el fee.</p></details>
+    <details><summary>¿Quién hace la transferencia?</summary><p>Tu agencia, con su gestor. Si no tenés, Yacar Gestión.</p></details>
+    <details><summary>¿Cómo pago el fee?</summary><p>Con un link de Mercado Pago apenas ganás. Te enviamos la factura.</p></details>
+   </div>
+  </div>
+ </section>
+
+ <section class="closing">
+  <div class="wrap">
+   <div><h2>Sumá tu agencia a Yacar.</h2><p>Te sumás en un minuto.</p></div>
+   <button class="btn pri" data-go="alta">Sumar mi agencia</button>
+  </div>
+ </section>
+
+ <div class="stickycta" role="region" aria-label="Sumar mi agencia"><span><b>Autos de tu zona, todos los días</b>Sin abono · 1,5% solo si comprás</span><button class="btn pri" data-go="alta">Sumar mi agencia</button></div>
+</main>
+
+<main id="vFlujo" class="flujo" hidden>
+ <div class="wrap">
+  <div class="card">
+   <div class="cardtop"><span id="flTit">Alta de agencia</span><b class="num" id="pasoTxt"></b></div>
+   <div class="prog" id="progW"><i id="progBar" style="width:33%"></i></div>
+   <div id="flBody"></div>
+  </div>
+ </div>
+</main>
+
+<main id="vSubasta" class="subasta" hidden></main>
+
+<main id="vLegal" class="legal" hidden>
+ <div class="wrap"><div class="card" id="legalBody"></div></div>
+</main>
+
+<footer class="foot">
+ <div class="wrap">
+  <a class="logo" href="#agencias" style="font-size:22px">%%LOGO%%Yacar</a>
+  <nav aria-label="Legales y contacto">
+   <a href="#agencias/terminos">Términos para agencias</a>
+   <a href="#agencias/reglas">Reglas de la subasta</a>
+   <a href="#agencias/privacidad">Privacidad</a>
+   <span>WhatsApp de agencias: a definir</span>
+   <a href="#vender">Quiero vender mi auto</a>
+  </nav>
+  <span>© 2026 Yacar · Prototipo</span>
+ </div>
+</footer>
+
+<div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Fotos del auto"></div>
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true"></div>
+<div class="avisos" id="avisos" aria-live="polite"></div>
+
+<button class="fab" id="fab" aria-expanded="false" aria-controls="panel">Notas del prototipo</button>
+<aside class="panel" id="panel" hidden aria-label="Notas del prototipo"></aside>
+</div>

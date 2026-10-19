@@ -1,0 +1,477 @@
+{
+  "par": {
+    "valor_hora_taller": 84000,
+    "valor_dia_chapa": 336000,
+    "valor_pano_pintura": 504000,
+    "iva": 0.21,
+    "factor_agencia": 1,
+    "tope_total": -0.3,
+    "umbral_auto_grande": 25000000,
+    "vigencia_valores": "3er trimestre 2026",
+    "tope_premio": 0.03
+  },
+  "preguntas": [
+    {
+      "id": "chapa_pintura",
+      "orden": 1,
+      "pregunta": "Chapa y pintura: ¿alguna parte del auto tiene alguno de estos daños?",
+      "tipo": "cantidad",
+      "responde": "revision",
+      "opciones": [
+        {
+          "id": "rayon_superficial",
+          "texto": "Rayón que no se siente con la uña (se va puliendo)",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 2.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        },
+        {
+          "id": "rayon_profundo",
+          "texto": "Rayón que se siente con la uña, o pintura saltada",
+          "pintar": 1.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        },
+        {
+          "id": "abollon",
+          "texto": "Abollón (la chapa quedó hundida)",
+          "pintar": 1.0,
+          "dias": 0.5,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        },
+        {
+          "id": "oxido",
+          "texto": "Óxido (manchas marrones o chapa picada)",
+          "pintar": 1.0,
+          "dias": 1.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        },
+        {
+          "id": "granizo",
+          "texto": "Marcas de granizo (varios hundimientos chicos)",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": true
+        }
+      ]
+    },
+    {
+      "id": "vidrios",
+      "orden": 2,
+      "pregunta": "¿Cómo están el parabrisas y los vidrios?",
+      "tipo": "una_opcion",
+      "responde": "revision",
+      "opciones": [
+        {
+          "id": "sanos",
+          "texto": "Sanos",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        },
+        {
+          "id": "piquete",
+          "texto": "Un piquete chico en el parabrisas, sin rajadura",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        },
+        {
+          "id": "rajado",
+          "texto": "Parabrisas rajado (tiene una línea) o algún vidrio roto",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": -0.015,
+          "rev": false
+        }
+      ]
+    },
+    {
+      "id": "cubiertas",
+      "orden": 3,
+      "pregunta": "¿Cuántas cubiertas hay que cambiar? Una cubierta para cambiar está casi lisa (el dibujo llega al testigo de desgaste) o tiene cortes o globos.",
+      "tipo": "cantidad",
+      "responde": "revision",
+      "opciones": [
+        {
+          "id": "cambiar",
+          "texto": "Cubiertas para cambiar",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 215000.0,
+          "fijoG": 280000.0,
+          "pct": 0.0,
+          "rev": false
+        }
+      ]
+    },
+    {
+      "id": "interior",
+      "orden": 4,
+      "pregunta": "¿Cómo está el interior (asientos, volante, plásticos, alfombras)?",
+      "tipo": "una_opcion",
+      "responde": "revision",
+      "opciones": [
+        {
+          "id": "normal",
+          "texto": "Bien: sin roturas ni manchas",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        },
+        {
+          "id": "desgaste",
+          "texto": "Gastado: asiento del conductor o volante gastados, plásticos rayados",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": -0.02,
+          "rev": false
+        },
+        {
+          "id": "roturas",
+          "texto": "Roto o manchado: tapizado cortado o quemado, manchas que no salen, plásticos rotos u olor fuerte (cigarrillo, humedad)",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": -0.05,
+          "rev": false
+        }
+      ]
+    },
+    {
+      "id": "mecanica",
+      "orden": 5,
+      "pregunta": "¿El auto tiene algún problema?",
+      "tipo": "una_opcion",
+      "responde": "vendedor",
+      "opciones": [
+        {
+          "id": "anda_bien",
+          "texto": "No, anda bien",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        },
+        {
+          "id": "fallas_menores",
+          "texto": "Sí, un detalle: un ruido, una vibración, el aire que no enfría o algo eléctrico que no anda",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": -0.05,
+          "rev": false
+        },
+        {
+          "id": "falla_importante",
+          "texto": "Sí, algo importante: falla de motor o caja, no arranca o pierde aceite o agua",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": true
+        }
+      ]
+    },
+    {
+      "id": "testigos",
+      "orden": 7,
+      "pregunta": "Con el motor en marcha, ¿queda alguna luz de falla encendida en el tablero?",
+      "tipo": "una_opcion",
+      "responde": "revision",
+      "opciones": [
+        {
+          "id": "ninguno",
+          "texto": "Ninguna",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        },
+        {
+          "id": "alguno",
+          "texto": "Sí, queda alguna encendida",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": -0.05,
+          "rev": false
+        }
+      ]
+    },
+    {
+      "id": "choques",
+      "orden": 8,
+      "pregunta": "¿El auto tuvo choques?",
+      "tipo": "una_opcion",
+      "responde": "vendedor",
+      "opciones": [
+        {
+          "id": "nunca",
+          "texto": "Nunca chocó",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        },
+        {
+          "id": "leve",
+          "texto": "Un choque chico, ya arreglado: solo se cambió o reparó un paragolpes, una óptica, una puerta o un guardabarros",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": -0.05,
+          "rev": false
+        },
+        {
+          "id": "grave",
+          "texto": "Un choque fuerte: se dañó la estructura (largueros, parantes, piso), se activaron los airbags o el seguro lo dio por destruido",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": true
+        },
+        {
+          "id": "no_se",
+          "texto": "No sé (lo compré usado)",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        }
+      ]
+    },
+    {
+      "id": "service",
+      "orden": 9,
+      "pregunta": "Service (sale de dónde se hicieron los services y de cuándo fue el último)",
+      "tipo": "una_opcion",
+      "responde": "vendedor",
+      "opciones": [
+        {
+          "id": "oficial_al_dia",
+          "texto": "Siempre en el concesionario oficial, el último hace menos de 1 año",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.015,
+          "rev": false
+        },
+        {
+          "id": "atrasado",
+          "texto": "Último service hace más de 1 año, no se acuerda o no sabe dónde se hicieron",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 240000.0,
+          "fijoG": 350000.0,
+          "pct": 0.0,
+          "rev": false
+        },
+        {
+          "id": "mixto_al_dia",
+          "texto": "En el oficial durante la garantía y después en un taller, el último hace menos de 1 año",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.01,
+          "rev": false
+        },
+        {
+          "id": "taller_al_dia",
+          "texto": "Siempre en un taller de confianza, el último hace menos de 1 año",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        }
+      ]
+    },
+    {
+      "id": "duenos",
+      "orden": 10,
+      "pregunta": "¿Cuántos dueños tuvo el auto, contándote a vos?",
+      "tipo": "una_opcion",
+      "responde": "vendedor",
+      "opciones": [
+        {
+          "id": "1",
+          "texto": "Soy el primer dueño",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.01,
+          "rev": false
+        },
+        {
+          "id": "2",
+          "texto": "Segundo dueño",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        },
+        {
+          "id": "3",
+          "texto": "Tercero o más",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        },
+        {
+          "id": "ns",
+          "texto": "No sé",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        }
+      ]
+    },
+    {
+      "id": "libreta",
+      "orden": 11,
+      "pregunta": "Libreta de service sellada (la web la marca sola: oficial al día + foto)",
+      "tipo": "una_opcion",
+      "responde": "vendedor",
+      "opciones": [
+        {
+          "id": "si",
+          "texto": "Subió la foto de la libreta sellada (services oficiales al día)",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.005,
+          "rev": false
+        },
+        {
+          "id": "no",
+          "texto": "No subió la foto o no corresponde",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        }
+      ]
+    },
+    {
+      "id": "cuidado",
+      "orden": 12,
+      "pregunta": "Sin choques ni repintados (la web lo marca sola con las respuestas de choques y repintado)",
+      "tipo": "una_opcion",
+      "responde": "vendedor",
+      "opciones": [
+        {
+          "id": "si",
+          "texto": "Sin choques y sin partes repintadas",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.01,
+          "rev": false
+        },
+        {
+          "id": "no",
+          "texto": "Tuvo choques, repintados o no sabe",
+          "pintar": 0.0,
+          "dias": 0.0,
+          "horas": 0.0,
+          "fijo": 0.0,
+          "fijoG": null,
+          "pct": 0.0,
+          "rev": false
+        }
+      ]
+    }
+  ]
+}

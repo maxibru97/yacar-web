@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Yacar · Vendé tu auto</title>
+<!-- ARCHIVO ARMADO: lo genera app/build.py juntando app/src/. No editarlo a mano: se pisa en el próximo build. -->
+<!-- Web de Yacar (v6, 11/10/2026): vendedor + agencias en un solo archivo. El lado agencias está al final (template tplAg + <yacar-agencias>), se entra con "Soy agencia" (#agencias).
+     Web del vendedor (v5, 10/10/2026): una sola página. Inicio = landing (D-28) con el cotizador; "Quiero vender mi auto" sigue con el flujo completo
+     (registro, datos, fotos, estado, papeles, revisión, precio, confirmación, Mi auto). Revisión, subasta y ofertas están simuladas.
+     Se abre con doble clic. Motor de precios = motor-de-precios/ (Python) y su versión en JavaScript dentro de src/vendedor/vendedor.js. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+@@incluir:vendedor/vendedor.css@@
+</style>
+</head>
+<body>
+@@incluir:vendedor/vendedor.html@@
+<script type="application/json" id="catalogo">/*@json:catalogo.json*/null</script>
+<script type="application/json" id="supuestos">/*@json:supuestos.json*/null</script>
+<script>
+@@incluir:comun/suave.js@@
+@@incluir:comun/dias_habiles.js@@
+</script>
+<script>
+@@incluir:vendedor/patente.js@@
+@@incluir:vendedor/mercado.js@@
+@@incluir:vendedor/vendedor.js@@
+@@incluir:vendedor/camara.js@@
+</script>
+<template id="tplAg">
+<style>
+@@incluir:agencias/agencias.css@@
+@@incluir:agencias/subasta.css@@
+</style>
+@@incluir:agencias/agencias.html@@
+</template>
+
+<yacar-agencias id="agWeb"></yacar-agencias>
+<script>
+@@incluir:agencias/agencias.js@@
+@@incluir:agencias/cuenta.js@@
+@@incluir:agencias/subasta.js@@
+</script>
+</body>
+</html>

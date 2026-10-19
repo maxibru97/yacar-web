@@ -9,6 +9,9 @@ const A=window.YacarAg; if(!A) return;
 const {S,go,byId}=A;
 const SB_URL="https://arvhblngphminssaupfu.supabase.co";
 const SB_KEY="sb_publishable_RAJerx4YqVF8l50t17CLow_xBz6qKR6";
+// Mails de Supabase: el servicio que trae de fábrica solo manda a los miembros del equipo. Hasta tener uno propio
+// (Resend + dominio) en Supabase va "Confirm email" apagado y no se ofrece el link al mail. Con SMTP propio: true.
+const MAILS=false;
 const real=/^https?:$/.test(location.protocol)&&!/(^|\.)claude\.ai$|claudeusercontent\.com$/.test(location.hostname)&&!/[?&]demo=1/.test(location.search);
 if(real) byId("wrapAg")?.classList.add("real");   // esconde los atajos "Solo prototipo" del alta y el ingreso
 
@@ -30,7 +33,7 @@ function msj(e){
  const m=String(e?.message||e||"");
  if(/Invalid login/i.test(m)) return "El mail o la contraseña no coinciden.";
  if(/not confirmed/i.test(m)) return "Todavía no confirmaste tu mail: buscá el mail de Yacar y tocá el link.";
- if(/already (been )?registered/i.test(m)) return "Ya hay una cuenta con ese mail. Ingresá o pedí el link.";
+ if(/already (been )?registered/i.test(m)) return "Ya hay una cuenta con ese mail. Probá ingresar.";
  if(/Database error saving new user/i.test(m)) return "Ya hay una agencia registrada con ese CUIT.";
  if(/rate limit|too many|security purposes/i.test(m)) return "Pediste muchos mails seguidos. Probá de nuevo en unos minutos.";
  if(/Signups not allowed|not found/i.test(m)) return "No encontramos una agencia con ese mail. ¿Ya la sumaste a Yacar?";
@@ -104,6 +107,9 @@ async function iniciar(){
  if(vieneDelMail||/^#agencias/.test(location.hash)) go(A.aprobada()?"subasta":"estado");
 }
 
-window.YacarCuenta={real,ingresar,link,alta,guardar,salir,msj};
-if(real) iniciar().catch(e=>console.warn("Sesión no recuperada",e));
+window.YacarCuenta={real,mails:MAILS,ingresar,link,alta,guardar,salir,msj};
+if(real){
+ if(location.hash.startsWith("#agencias")) A.route();   // la primera pantalla se dibujó antes de que existiera YacarCuenta
+ iniciar().catch(e=>console.warn("Sesión no recuperada",e));
+}
 })();

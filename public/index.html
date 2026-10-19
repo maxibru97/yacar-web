@@ -4197,6 +4197,8 @@ const celOk=()=>{const d=S.cel.replace(/\D/g,"");return d.length>=10&&d.length<=
 const emailOk=e=>/^\S+@\S+\.\S+$/.test(String(e||"").trim());
 const mapsOk=()=>/(google\.[a-z.]+\/maps|maps\.app\.goo\.gl|goo\.gl\/maps|maps\.google\.)/i.test(S.maps);
 const aprobada=()=>S.sesion&&S.estado==="ok";
+// Web publicada sin servicio de mail propio todavía: no hay link al mail (ver cuenta.js).
+const sinMails=()=>!!(window.YacarCuenta?.real&&!window.YacarCuenta.mails);
 const perfilOk=()=>cuitOk(S.cuit)&&S.cuitVerif==="nuevo"&&datosOk();
 
 /* ---------- mapa ----------
@@ -4593,8 +4595,8 @@ function renderFlujo(){
   ${S.errCuenta?`<p class="err" role="alert">${esc(S.errCuenta)}</p>`:""}
   <button class="btn pri block" data-act="login" ${S.cargando?"disabled":""}>${S.cargando?"Ingresando…":"Ingresar"}</button>
   ${S.linkEnviado?`<div class="note ok" data-k="link"><b>Te mandamos un link a ${esc(S.ingEmail)}.</b> Abrilo desde este celular o compu y entrás sin contraseña. Vence en 1 hora.${window.YacarCuenta?.real?"":`<div class="noteacts"><span class="ptag">Solo prototipo</span><button class="linkbtn" data-act="abrirlink">Abrir el link del mail</button></div>`}</div>`
-   :`<button class="btn alt block" data-act="maillink">Entrar sin contraseña: mandame un link al mail</button>`}
-  <p style="margin-top:-6px;font-size:14px;color:var(--muted)">¿Te olvidaste la contraseña? Con el link entrás igual y la cambiás desde Mi agencia.</p>
+   :sinMails()?"":`<button class="btn alt block" data-act="maillink">Entrar sin contraseña: mandame un link al mail</button>`}
+  <p style="margin-top:-6px;font-size:14px;color:var(--muted)">${sinMails()?"¿Te olvidaste la contraseña? Escribinos y te ayudamos a entrar.":"¿Te olvidaste la contraseña? Con el link entrás igual y la cambiás desde Mi agencia."}</p>
   <hr class="acc-sep">
   <div class="acc-alt"><h3>¿Tu agencia todavía no está en Yacar?</h3><p class="sub" style="margin-top:0">Lleva unos minutos. La aprobamos en hasta 48 h hábiles.</p>
   <button class="btn alt block" data-go="alta">Sumar mi agencia</button></div>
@@ -4957,6 +4959,9 @@ const A=window.YacarAg; if(!A) return;
 const {S,go,byId}=A;
 const SB_URL="https://arvhblngphminssaupfu.supabase.co";
 const SB_KEY="sb_publishable_RAJerx4YqVF8l50t17CLow_xBz6qKR6";
+// Mails de Supabase: el servicio que trae de fábrica solo manda a los miembros del equipo. Hasta tener uno propio
+// (Resend + dominio) en Supabase va "Confirm email" apagado y no se ofrece el link al mail. Con SMTP propio: true.
+const MAILS=false;
 const real=/^https?:$/.test(location.protocol)&&!/(^|\.)claude\.ai$|claudeusercontent\.com$/.test(location.hostname)&&!/[?&]demo=1/.test(location.search);
 if(real) byId("wrapAg")?.classList.add("real");   // esconde los atajos "Solo prototipo" del alta y el ingreso
 
@@ -4978,7 +4983,7 @@ function msj(e){
  const m=String(e?.message||e||"");
  if(/Invalid login/i.test(m)) return "El mail o la contraseña no coinciden.";
  if(/not confirmed/i.test(m)) return "Todavía no confirmaste tu mail: buscá el mail de Yacar y tocá el link.";
- if(/already (been )?registered/i.test(m)) return "Ya hay una cuenta con ese mail. Ingresá o pedí el link.";
+ if(/already (been )?registered/i.test(m)) return "Ya hay una cuenta con ese mail. Probá ingresar.";
  if(/Database error saving new user/i.test(m)) return "Ya hay una agencia registrada con ese CUIT.";
  if(/rate limit|too many|security purposes/i.test(m)) return "Pediste muchos mails seguidos. Probá de nuevo en unos minutos.";
  if(/Signups not allowed|not found/i.test(m)) return "No encontramos una agencia con ese mail. ¿Ya la sumaste a Yacar?";
@@ -5052,8 +5057,11 @@ async function iniciar(){
  if(vieneDelMail||/^#agencias/.test(location.hash)) go(A.aprobada()?"subasta":"estado");
 }
 
-window.YacarCuenta={real,ingresar,link,alta,guardar,salir,msj};
-if(real) iniciar().catch(e=>console.warn("Sesión no recuperada",e));
+window.YacarCuenta={real,mails:MAILS,ingresar,link,alta,guardar,salir,msj};
+if(real){
+ if(location.hash.startsWith("#agencias")) A.route();   // la primera pantalla se dibujó antes de que existiera YacarCuenta
+ iniciar().catch(e=>console.warn("Sesión no recuperada",e));
+}
 })();
 /* ===================== Portal de subasta para agencias (18/10/2026) =====================
  Pantallas detrás del ingreso (solo agencias aprobadas), con la estructura de las subastas en vivo de Motordil:

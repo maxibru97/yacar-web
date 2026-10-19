@@ -131,7 +131,8 @@ async function iniciar(){
 
 window.YacarCuenta={real,mails:MAILS,codigoVendedor,verificarVendedor,vendedorEs,ingresar,link,alta,guardar,salir,msj};
 if(real){
- if(location.hash.startsWith("#agencias")) A.route();   // la primera pantalla se dibujó antes de que existiera YacarCuenta
+ // La primera pantalla (de agencias o del vendedor) se dibujó antes de que existiera YacarCuenta: se vuelve a dibujar.
+ if(location.hash.startsWith("#agencias")) A.route(); else window.dispatchEvent(new CustomEvent("yacar:cuenta"));
  iniciar().catch(e=>console.warn("Sesión no recuperada",e));
 }
 })();

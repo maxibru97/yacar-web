@@ -617,6 +617,7 @@ function verificarCodigo(){
     .catch(e => { S.codVerif = false; S.codigo = ''; S.codErr = YacarCuenta.msj(e); render(); $('#r_cod')?.focus(); });
 }
 // Volvió del link del mail (en esta pestaña o en otra): si es el mail que cargó, sigue.
+window.addEventListener('yacar:cuenta', () => render());   // si abrió la web en el registro o el código, aparece el mail
 window.addEventListener('yacar:sesion', () => { if (S.paso==='codigo' && cuentaReal() && YacarCuenta.vendedorEs(S.email)) go('auto'); });
 const segReenvio = () => Math.max(0, 30 - Math.floor((Date.now() - (S.codEnviado||0))/1000));
 const txtReenvio = () => { const s = segReenvio(); return s>0 ? `¿No te llegó? Reenviar en 0:${String(s).padStart(2,'0')}` : '¿No te llegó? Reenviar el código'; };
@@ -1360,6 +1361,7 @@ function go(p, opts={}){
   S.paso = p;
   if (QS[p] && desde!==p && !(p==='estado' && S.estResumen)){ const l = QS[p](); S.qi[p] = opts.alFinal ? l.length-1 : Math.max(0, l.findIndex(q=>!q.ok())); }
   if (p==='codigo' && desde!=='codigo' && cuentaReal()){
+    if (!mailOk(S.email)) return go('registro');   // sin mail no hay a dónde mandar el link
     if (YacarCuenta.vendedorEs(S.email)) return go('auto');
     S.codigo = ''; S.codErr = ''; mandarCodigo();
   }

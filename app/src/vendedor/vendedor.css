@@ -659,3 +659,6 @@ button.cam-alt{appearance:none;border:0;background:none;padding:8px 0;font:inher
 .cam-acc{display:flex;gap:10px}
 .cam-acc .btn{flex:1}
 @media (prefers-reduced-motion: reduce){.cam-ok{animation:none}.cam-barra i{transition:none}}
+
+/* Web publicada con cuenta real (19/10): sin atajos de prototipo en el registro y el código */
+.cuenta-real .proto:has([data-ejemplo="registro"]),.cuenta-real .proto:has([data-ejemplo="codigo"]){display:none}

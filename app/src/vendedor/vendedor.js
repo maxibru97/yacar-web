@@ -584,12 +584,17 @@ V.rango1 = () => {
 };
 
 const CUANDO = [['30dias','En los próximos 30 días'],['meses','En unos meses'],['saber','Solo quería saber cuánto vale']];
+// 19/10: en la web publicada (cuenta real con Supabase) el código llega al mail, así que también se pide el mail.
+const cuentaReal = () => !!window.YacarCuenta?.real;
+const mailOk = m => /^\S+@\S+\.\S+$/.test(String(m||'').trim());
+const registroOk = () => { const dg = S.cel.replace(/\D/g,''); return !!(S.nombre.trim() && dg.length>=10 && dg.length<=13 && (!cuentaReal() || mailOk(S.email))); };
 V.registro = () => {   // M5 (14/10): solo nombre y celular; "¿cuándo lo querés vender?" pasa a una tarjeta después del código
-  const digits = S.cel.replace(/\D/g,''), okCel = digits.length>=10 && digits.length<=13, ok = S.nombre.trim() && okCel;
+  const digits = S.cel.replace(/\D/g,''), okCel = digits.length>=10 && digits.length<=13, ok = registroOk();
   return `<div class="screen"><span class="kicker">Para guardar tu cotización</span><h2>¿Cómo te contactamos?</h2>
   <p class="lead">Las agencias no ven tus datos hasta que vendés.</p>
   <label class="f" for="r_nombre">Nombre<input type="text" id="r_nombre" value="${esc(S.nombre)}" autocomplete="given-name" autocapitalize="words"></label>
   <label class="f" for="r_cel">Celular con WhatsApp<input type="tel" id="r_cel" value="${esc(S.cel)}" placeholder="11 2345 6789" autocomplete="tel"><span class="err" id="e_cel">${S.cel&&!okCel?'Escribí el número con código de área (ej. 11 2345 6789).':''}</span></label>
+  ${cuentaReal()?`<label class="f" for="r_email">Mail<input type="email" id="r_email" value="${esc(S.email)}" placeholder="nombre@gmail.com" autocomplete="email" inputmode="email"><span class="hint">Te mandamos ahí un código para entrar, sin contraseña.</span></label>`:''}
   <div class="proto"><span class="tag">Solo prototipo</span><button type="button" data-ejemplo="registro">Completar con datos de ejemplo</button></div>
   <div class="actions">${faltaHTML(faltaRegistro())}<button class="btn" data-go="codigo" type="button" ${ok?'':'disabled'}>Seguir</button></div></div>`;
 };
@@ -597,13 +602,31 @@ function faltaRegistro(){
   const dg = S.cel.replace(/\D/g,''), f = [];
   if (!S.nombre.trim()) f.push('tu nombre');
   if (!(dg.length>=10 && dg.length<=13)) f.push('tu celular con código de área');
+  if (cuentaReal() && !mailOk(S.email)) f.push('tu mail');
   return f.length ? 'Falta: ' + f.join(' y ') + '.' : '';
+}
+function mandarCodigo(){
+  YacarCuenta.codigoVendedor(S.email.trim(), {nombre:S.nombre.trim(), celular:S.cel})
+    .catch(e => { S.codErr = YacarCuenta.msj(e); S.codEnviado = 0; if (S.paso==='codigo') render(); });
+}
+function verificarCodigo(){
+  if (!/^\d{6}$/.test(S.codigo) || S.codVerif) return;
+  S.codVerif = true; S.codErr = ''; render();
+  YacarCuenta.verificarVendedor(S.email.trim(), S.codigo)
+    .then(() => { S.codVerif = false; if (S.paso==='codigo') go('auto'); })
+    .catch(e => { S.codVerif = false; S.codigo = ''; S.codErr = YacarCuenta.msj(e); render(); $('#r_cod')?.focus(); });
 }
 const segReenvio = () => Math.max(0, 30 - Math.floor((Date.now() - (S.codEnviado||0))/1000));
 const txtReenvio = () => { const s = segReenvio(); return s>0 ? `¿No te llegó? Reenviar en 0:${String(s).padStart(2,'0')}` : '¿No te llegó? Reenviar el código'; };
 // 12/10/2026: entrar con un código por WhatsApp crea la cuenta (sin contraseña). Si deja la carga a medias, le mandamos un link para seguir.
 V.codigo = () => {
   const ok = /^\d{6}$/.test(S.codigo);
+  if (cuentaReal()) return `<div class="screen"><span class="kicker">Tu cuenta</span><h2>Te mandamos un código a tu mail</h2>
+  <p class="lead">Lo enviamos a <b>${esc(S.email)}</b>. Puede tardar un minuto: si no lo ves, revisá Spam o Promociones. No hace falta contraseña.</p>
+  <label class="f" for="r_cod">Código de 6 números<input type="text" id="r_cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value="${esc(S.codigo)}" placeholder="123456" style="font-size:24px;letter-spacing:.3em" ${S.codVerif?'disabled':''}></label>
+  ${S.codVerif?'<p class="note info" role="status">Revisando el código…</p>':''}${S.codErr?`<p class="note bad" role="alert">${esc(S.codErr)}</p>`:''}
+  <div class="reenvio"><button class="btn link" type="button" id="r_reenv" data-reenviar ${segReenvio()>0?'disabled':''}>${txtReenvio()}</button><button class="btn link" type="button" data-go="registro">Cambiar el mail</button></div>
+  <div class="actions"><button class="btn" data-codok type="button" id="r_codgo" ${ok&&!S.codVerif?'':'disabled'}>Seguir</button></div></div>`;
   return `<div class="screen"><span class="kicker">Tu cuenta</span><h2>Te mandamos un código por WhatsApp</h2>
   <p class="lead">Lo enviamos al <b>${esc(S.cel||'')}</b>. No hace falta contraseña.</p>
   <label class="f" for="r_cod">Código de 6 números<input type="text" id="r_cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value="${esc(S.codigo)}" placeholder="123456" style="font-size:24px;letter-spacing:.3em"></label>
@@ -1329,6 +1352,10 @@ function go(p, opts={}){
   if (p==='auto' && previasOk()) p = desde==='estado' ? 'codigo' : 'estado';   // 17/10: ya se contestaron antes de los km
   S.paso = p;
   if (QS[p] && desde!==p && !(p==='estado' && S.estResumen)){ const l = QS[p](); S.qi[p] = opts.alFinal ? l.length-1 : Math.max(0, l.findIndex(q=>!q.ok())); }
+  if (p==='codigo' && desde!=='codigo' && cuentaReal()){
+    if (YacarCuenta.vendedorEs(S.email)) return go('auto');
+    S.codigo = ''; S.codErr = ''; mandarCodigo();
+  }
   if (p==='codigo' && desde!=='codigo') S.codEnviado = Date.now();
   if (p==='fotos' && desde!=='fotos'){ S.fotoVolver = false; entrarFotos(); }
   if (p==='registro') S.pasoGuardado = '';
@@ -1393,7 +1420,8 @@ document.addEventListener('click', ev => {
   else if (d.irfoto!=null && d.irfoto!==''){ S.fotoVolver = S.fotoFase==='resumen'; irFase('foto', +d.irfoto); }
   else if ('seguir' in d){ const p = S.pasoGuardado; S.pasoGuardado = ''; go(p); }
   else if ('denuevo' in d){ borrarAvance(); S = S0(); ultimaClave = ''; render(true); }
-  else if ('reenviar' in d){ S.codEnviado = Date.now(); render(); aviso('Te mandamos un código nuevo por WhatsApp.'); }
+  else if ('reenviar' in d){ S.codEnviado = Date.now(); if (cuentaReal()){ S.codErr = ''; mandarCodigo(); } render(); aviso(cuentaReal() ? 'Te mandamos un código nuevo a tu mail.' : 'Te mandamos un código nuevo por WhatsApp.'); }
+  else if ('codok' in d){ verificarCodigo(); }
   else if ('sms' in d){ S.codEnviado = Date.now(); render(); aviso(`Te mandamos el código por SMS al ${S.cel}.`); }
   else if (d.sexo){ S.dniSexo = d.sexo; render(); }
   else if (d.dniplanb!=null && d.dniplanb!==''){ S.dniPlanB = d.dniplanb==='1'; render(); }
@@ -1528,9 +1556,9 @@ document.addEventListener('input', ev => {
   else if (t.id==='d_svkm'){ const dgt = t.value.replace(/\D/g,'').slice(0,7); S.det.svKm = dgt ? KM(+dgt) : ''; t.value = S.det.svKm; updEstado(); }
   else if (t.id==='z_cel'){ S.cel = t.value; S.avisoZona = false; const b = $('[data-avisozona]'); if (b) b.disabled = !celValido(S.cel); }
   else if (t.id==='r_cod'){ S.codigo = t.value.replace(/\D/g,'').slice(0,6); t.value = S.codigo; const b = $('#r_codgo'); if (b) b.disabled = !/^\d{6}$/.test(S.codigo);
-    if (/^\d{6}$/.test(S.codigo)) setTimeout(()=>{ if (S.paso==='codigo' && /^\d{6}$/.test(S.codigo)) go('auto'); }, 400); }   // 18/10 (menos pasos): con los 6 números sigue solo
-  else if (['r_nombre','r_cel'].includes(t.id)){ S[t.id.slice(2)] = t.value;
-    const dg = S.cel.replace(/\D/g,''), b = $('[data-go="codigo"]'), fa = $('#falta'), tx = faltaRegistro(); if (b) b.disabled = !(S.nombre.trim() && dg.length>=10 && dg.length<=13);
+    if (/^\d{6}$/.test(S.codigo)) setTimeout(()=>{ if (S.paso==='codigo' && /^\d{6}$/.test(S.codigo)) cuentaReal() ? verificarCodigo() : go('auto'); }, 400); }   // 18/10 (menos pasos): con los 6 números sigue solo
+  else if (['r_nombre','r_cel','r_email'].includes(t.id)){ S[t.id.slice(2)] = t.value;
+    const b = $('[data-go="codigo"]'), fa = $('#falta'), tx = faltaRegistro(); if (b) b.disabled = !registroOk();
     if (fa){ fa.textContent = tx; fa.hidden = !tx; } }
   else if (t.id==='p_min'){ const dgt = t.value.replace(/\D/g,'').slice(0,10); S.minimo = dgt ? KM(+dgt) : ''; t.value = S.minimo;
     clearTimeout(window._mt); window._mt = setTimeout(()=>{ const pos = t.selectionStart; render(); const n=$('#p_min'); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length);} }, 450); }

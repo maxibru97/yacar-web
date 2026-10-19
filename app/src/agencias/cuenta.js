@@ -13,7 +13,7 @@ const SB_KEY="sb_publishable_RAJerx4YqVF8l50t17CLow_xBz6qKR6";
 // (Resend + dominio) en Supabase va "Confirm email" apagado y no se ofrece el link al mail. Con SMTP propio: true.
 const MAILS=false;
 const real=/^https?:$/.test(location.protocol)&&!/(^|\.)claude\.ai$|claudeusercontent\.com$/.test(location.hostname)&&!/[?&]demo=1/.test(location.search);
-if(real) byId("wrapAg")?.classList.add("real");   // esconde los atajos "Solo prototipo" del alta y el ingreso
+if(real){ byId("wrapAg")?.classList.add("real"); document.body.classList.add("cuenta-real"); }   // esconde los atajos "Solo prototipo" del alta y el ingreso (y del registro del vendedor)
 
 let sb=null, listo=null;
 function cargar(){
@@ -36,6 +36,8 @@ function msj(e){
  if(/already (been )?registered/i.test(m)) return "Ya hay una cuenta con ese mail. Probá ingresar.";
  if(/Database error saving new user/i.test(m)) return "Ya hay una agencia registrada con ese CUIT.";
  if(/rate limit|too many|security purposes/i.test(m)) return "Pediste muchos mails seguidos. Probá de nuevo en unos minutos.";
+ if(/expired|invalid.*(otp|token)|token.*(expired|invalid)/i.test(m)) return "El código no es correcto o ya venció. Revisalo o pedí uno nuevo.";
+ if(/Email address .*invalid|invalid.*email/i.test(m)) return "Revisá el mail: parece que tiene un error.";
  if(/Signups not allowed|not found/i.test(m)) return "No encontramos una agencia con ese mail. ¿Ya la sumaste a Yacar?";
  if(/sin conexión|Failed to fetch|NetworkError/i.test(m)) return "No pudimos conectarnos. Revisá tu conexión y probá de nuevo.";
  return "No pudimos completar el paso. Probá de nuevo.";
@@ -92,6 +94,21 @@ async function guardar(){
   barrio_base:S.base,radio_km:S.radio,zonas:[...S.zonas],preferencias:prefs()}).eq("usuario_id",user.id);
  if(error) console.warn("No se guardó el perfil",error);
 }
+// Vendedores (19/10): entran con un código de 6 números que les llega al mail; la primera vez crea la cuenta (perfil "vendedor").
+// La plantilla "Magic Link" de Supabase tiene que mostrar {{ .Token }} para que llegue el código y no solo el link.
+let sesionMail="";
+async function codigoVendedor(email,{nombre,celular}){
+ await cargar();
+ const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true,data:{rol:"vendedor",nombre,celular}}});
+ if(error) throw error;
+}
+async function verificarVendedor(email,token){
+ await cargar();
+ const {data,error}=await sb.auth.verifyOtp({email,token,type:"email"});
+ if(error) throw error;
+ sesionMail=data.user?.email||email;
+}
+const vendedorEs=email=>!!sesionMail&&sesionMail.toLowerCase()===String(email||"").trim().toLowerCase();
 async function salir(){ if(sb) await sb.auth.signOut(); }
 
 // Al abrir la web, o al volver del link del mail (?code=...), recupera la sesión.
@@ -103,11 +120,13 @@ async function iniciar(){
  const {data:{session}}=await sb.auth.getSession();
  if(vieneDelMail) history.replaceState(null,"",location.pathname+location.hash);
  if(!session) return;
+ sesionMail=session.user.email||"";
+ if(!/^#agencias/.test(location.hash)&&!vieneDelMail) return;   // lado vendedor: alcanza con saber quién entró
  await traerAgencia(session.user);
  if(vieneDelMail||/^#agencias/.test(location.hash)) go(A.aprobada()?"subasta":"estado");
 }
 
-window.YacarCuenta={real,mails:MAILS,ingresar,link,alta,guardar,salir,msj};
+window.YacarCuenta={real,mails:MAILS,codigoVendedor,verificarVendedor,vendedorEs,ingresar,link,alta,guardar,salir,msj};
 if(real){
  if(location.hash.startsWith("#agencias")) A.route();   // la primera pantalla se dibujó antes de que existiera YacarCuenta
  iniciar().catch(e=>console.warn("Sesión no recuperada",e));

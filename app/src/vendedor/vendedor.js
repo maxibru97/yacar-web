@@ -616,11 +616,18 @@ function verificarCodigo(){
     .then(() => { S.codVerif = false; if (S.paso==='codigo') go('auto'); })
     .catch(e => { S.codVerif = false; S.codigo = ''; S.codErr = YacarCuenta.msj(e); render(); $('#r_cod')?.focus(); });
 }
+// Volvió del link del mail (en esta pestaña o en otra): si es el mail que cargó, sigue.
+window.addEventListener('yacar:sesion', () => { if (S.paso==='codigo' && cuentaReal() && YacarCuenta.vendedorEs(S.email)) go('auto'); });
 const segReenvio = () => Math.max(0, 30 - Math.floor((Date.now() - (S.codEnviado||0))/1000));
 const txtReenvio = () => { const s = segReenvio(); return s>0 ? `¿No te llegó? Reenviar en 0:${String(s).padStart(2,'0')}` : '¿No te llegó? Reenviar el código'; };
 // 12/10/2026: entrar con un código por WhatsApp crea la cuenta (sin contraseña). Si deja la carga a medias, le mandamos un link para seguir.
 V.codigo = () => {
   const ok = /^\d{6}$/.test(S.codigo);
+  // Sin servicio de mail propio, Supabase no deja cambiar el mail: llega un link (no el código). Al tocarlo vuelve acá y sigue.
+  if (cuentaReal() && !YacarCuenta.mails) return `<div class="screen"><span class="kicker">Tu cuenta</span><h2>Te mandamos un mail</h2>
+  <p class="lead">Lo enviamos a <b>${esc(S.email)}</b>. Abrilo <b>desde este mismo celular o compu</b> y tocá el botón del mail: volvés acá y seguís, sin contraseña.</p>
+  <p class="note info">Puede tardar un minuto. Si no lo ves, revisá Spam o Promociones.</p>${S.codErr?`<p class="note bad" role="alert">${esc(S.codErr)}</p>`:''}
+  <div class="reenvio"><button class="btn link" type="button" id="r_reenv" data-reenviar ${segReenvio()>0?'disabled':''}>${txtReenvio()}</button><button class="btn link" type="button" data-go="registro">Cambiar el mail</button></div></div>`;
   if (cuentaReal()) return `<div class="screen"><span class="kicker">Tu cuenta</span><h2>Te mandamos un código a tu mail</h2>
   <p class="lead">Lo enviamos a <b>${esc(S.email)}</b>. Puede tardar un minuto: si no lo ves, revisá Spam o Promociones. No hace falta contraseña.</p>
   <label class="f" for="r_cod">Código de 6 números<input type="text" id="r_cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value="${esc(S.codigo)}" placeholder="123456" style="font-size:24px;letter-spacing:.3em" ${S.codVerif?'disabled':''}></label>
@@ -1420,7 +1427,7 @@ document.addEventListener('click', ev => {
   else if (d.irfoto!=null && d.irfoto!==''){ S.fotoVolver = S.fotoFase==='resumen'; irFase('foto', +d.irfoto); }
   else if ('seguir' in d){ const p = S.pasoGuardado; S.pasoGuardado = ''; go(p); }
   else if ('denuevo' in d){ borrarAvance(); S = S0(); ultimaClave = ''; render(true); }
-  else if ('reenviar' in d){ S.codEnviado = Date.now(); if (cuentaReal()){ S.codErr = ''; mandarCodigo(); } render(); aviso(cuentaReal() ? 'Te mandamos un código nuevo a tu mail.' : 'Te mandamos un código nuevo por WhatsApp.'); }
+  else if ('reenviar' in d){ S.codEnviado = Date.now(); if (cuentaReal()){ S.codErr = ''; mandarCodigo(); } render(); aviso(cuentaReal() ? (YacarCuenta.mails ? 'Te mandamos un código nuevo a tu mail.' : 'Te mandamos otro mail.') : 'Te mandamos un código nuevo por WhatsApp.'); }
   else if ('codok' in d){ verificarCodigo(); }
   else if ('sms' in d){ S.codEnviado = Date.now(); render(); aviso(`Te mandamos el código por SMS al ${S.cel}.`); }
   else if (d.sexo){ S.dniSexo = d.sexo; render(); }

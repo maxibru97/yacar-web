@@ -15,13 +15,16 @@ const MAILS=false;
 const real=/^https?:$/.test(location.protocol)&&!/(^|\.)claude\.ai$|claudeusercontent\.com$/.test(location.hostname)&&!/[?&]demo=1/.test(location.search);
 if(real){ byId("wrapAg")?.classList.add("real"); document.body.classList.add("cuenta-real"); }   // esconde los atajos "Solo prototipo" del alta y el ingreso (y del registro del vendedor)
 
-let sb=null, listo=null;
+let sb=null, listo=null, sesionMail="";
 function cargar(){
  if(listo) return listo;
  listo=new Promise((ok,mal)=>{
   const s=document.createElement("script");
   s.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js";
-  s.onload=()=>{ sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{flowType:"pkce",detectSessionInUrl:true,persistSession:true}}); ok(sb); };
+  s.onload=()=>{ sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{flowType:"pkce",detectSessionInUrl:true,persistSession:true}});
+   // Avisa al lado vendedor cuando alguien entra (también si entró en otra pestaña con el link del mail).
+   sb.auth.onAuthStateChange((ev,ses)=>{ if(ses?.user){ sesionMail=ses.user.email||""; setTimeout(()=>window.dispatchEvent(new CustomEvent("yacar:sesion"))); } });
+   ok(sb); };
   s.onerror=()=>{ listo=null; mal(new Error("sin conexión")); };
   document.head.appendChild(s);
  });
@@ -95,11 +98,11 @@ async function guardar(){
  if(error) console.warn("No se guardó el perfil",error);
 }
 // Vendedores (19/10): entran con un código de 6 números que les llega al mail; la primera vez crea la cuenta (perfil "vendedor").
-// La plantilla "Magic Link" de Supabase tiene que mostrar {{ .Token }} para que llegue el código y no solo el link.
-let sesionMail="";
+// La plantilla "Magic Link" de Supabase tiene que mostrar {{ .Token }} para que llegue el código; para editarla Supabase pide
+// SMTP propio. Hasta entonces (MAILS=false) llega el link: vuelve a la web con ?code= y la sesión avisa con "yacar:sesion".
 async function codigoVendedor(email,{nombre,celular}){
  await cargar();
- const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true,data:{rol:"vendedor",nombre,celular}}});
+ const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname,data:{rol:"vendedor",nombre,celular}}});
  if(error) throw error;
 }
 async function verificarVendedor(email,token){
@@ -121,7 +124,7 @@ async function iniciar(){
  if(vieneDelMail) history.replaceState(null,"",location.pathname+location.hash);
  if(!session) return;
  sesionMail=session.user.email||"";
- if(!/^#agencias/.test(location.hash)&&!vieneDelMail) return;   // lado vendedor: alcanza con saber quién entró
+ if(!/^#agencias/.test(location.hash)) return;   // lado vendedor: alcanza con saber quién entró (avisa onAuthStateChange)
  await traerAgencia(session.user);
  if(vieneDelMail||/^#agencias/.test(location.hash)) go(A.aprobada()?"subasta":"estado");
 }

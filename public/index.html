@@ -1788,11 +1788,18 @@ function verificarCodigo(){
     .then(() => { S.codVerif = false; if (S.paso==='codigo') go('auto'); })
     .catch(e => { S.codVerif = false; S.codigo = ''; S.codErr = YacarCuenta.msj(e); render(); $('#r_cod')?.focus(); });
 }
+// Volvió del link del mail (en esta pestaña o en otra): si es el mail que cargó, sigue.
+window.addEventListener('yacar:sesion', () => { if (S.paso==='codigo' && cuentaReal() && YacarCuenta.vendedorEs(S.email)) go('auto'); });
 const segReenvio = () => Math.max(0, 30 - Math.floor((Date.now() - (S.codEnviado||0))/1000));
 const txtReenvio = () => { const s = segReenvio(); return s>0 ? `¿No te llegó? Reenviar en 0:${String(s).padStart(2,'0')}` : '¿No te llegó? Reenviar el código'; };
 // 12/10/2026: entrar con un código por WhatsApp crea la cuenta (sin contraseña). Si deja la carga a medias, le mandamos un link para seguir.
 V.codigo = () => {
   const ok = /^\d{6}$/.test(S.codigo);
+  // Sin servicio de mail propio, Supabase no deja cambiar el mail: llega un link (no el código). Al tocarlo vuelve acá y sigue.
+  if (cuentaReal() && !YacarCuenta.mails) return `<div class="screen"><span class="kicker">Tu cuenta</span><h2>Te mandamos un mail</h2>
+  <p class="lead">Lo enviamos a <b>${esc(S.email)}</b>. Abrilo <b>desde este mismo celular o compu</b> y tocá el botón del mail: volvés acá y seguís, sin contraseña.</p>
+  <p class="note info">Puede tardar un minuto. Si no lo ves, revisá Spam o Promociones.</p>${S.codErr?`<p class="note bad" role="alert">${esc(S.codErr)}</p>`:''}
+  <div class="reenvio"><button class="btn link" type="button" id="r_reenv" data-reenviar ${segReenvio()>0?'disabled':''}>${txtReenvio()}</button><button class="btn link" type="button" data-go="registro">Cambiar el mail</button></div></div>`;
   if (cuentaReal()) return `<div class="screen"><span class="kicker">Tu cuenta</span><h2>Te mandamos un código a tu mail</h2>
   <p class="lead">Lo enviamos a <b>${esc(S.email)}</b>. Puede tardar un minuto: si no lo ves, revisá Spam o Promociones. No hace falta contraseña.</p>
   <label class="f" for="r_cod">Código de 6 números<input type="text" id="r_cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value="${esc(S.codigo)}" placeholder="123456" style="font-size:24px;letter-spacing:.3em" ${S.codVerif?'disabled':''}></label>
@@ -2592,7 +2599,7 @@ document.addEventListener('click', ev => {
   else if (d.irfoto!=null && d.irfoto!==''){ S.fotoVolver = S.fotoFase==='resumen'; irFase('foto', +d.irfoto); }
   else if ('seguir' in d){ const p = S.pasoGuardado; S.pasoGuardado = ''; go(p); }
   else if ('denuevo' in d){ borrarAvance(); S = S0(); ultimaClave = ''; render(true); }
-  else if ('reenviar' in d){ S.codEnviado = Date.now(); if (cuentaReal()){ S.codErr = ''; mandarCodigo(); } render(); aviso(cuentaReal() ? 'Te mandamos un código nuevo a tu mail.' : 'Te mandamos un código nuevo por WhatsApp.'); }
+  else if ('reenviar' in d){ S.codEnviado = Date.now(); if (cuentaReal()){ S.codErr = ''; mandarCodigo(); } render(); aviso(cuentaReal() ? (YacarCuenta.mails ? 'Te mandamos un código nuevo a tu mail.' : 'Te mandamos otro mail.') : 'Te mandamos un código nuevo por WhatsApp.'); }
   else if ('codok' in d){ verificarCodigo(); }
   else if ('sms' in d){ S.codEnviado = Date.now(); render(); aviso(`Te mandamos el código por SMS al ${S.cel}.`); }
   else if (d.sexo){ S.dniSexo = d.sexo; render(); }
@@ -4996,13 +5003,16 @@ const MAILS=false;
 const real=/^https?:$/.test(location.protocol)&&!/(^|\.)claude\.ai$|claudeusercontent\.com$/.test(location.hostname)&&!/[?&]demo=1/.test(location.search);
 if(real){ byId("wrapAg")?.classList.add("real"); document.body.classList.add("cuenta-real"); }   // esconde los atajos "Solo prototipo" del alta y el ingreso (y del registro del vendedor)
 
-let sb=null, listo=null;
+let sb=null, listo=null, sesionMail="";
 function cargar(){
  if(listo) return listo;
  listo=new Promise((ok,mal)=>{
   const s=document.createElement("script");
   s.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js";
-  s.onload=()=>{ sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{flowType:"pkce",detectSessionInUrl:true,persistSession:true}}); ok(sb); };
+  s.onload=()=>{ sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{flowType:"pkce",detectSessionInUrl:true,persistSession:true}});
+   // Avisa al lado vendedor cuando alguien entra (también si entró en otra pestaña con el link del mail).
+   sb.auth.onAuthStateChange((ev,ses)=>{ if(ses?.user){ sesionMail=ses.user.email||""; setTimeout(()=>window.dispatchEvent(new CustomEvent("yacar:sesion"))); } });
+   ok(sb); };
   s.onerror=()=>{ listo=null; mal(new Error("sin conexión")); };
   document.head.appendChild(s);
  });
@@ -5076,11 +5086,11 @@ async function guardar(){
  if(error) console.warn("No se guardó el perfil",error);
 }
 // Vendedores (19/10): entran con un código de 6 números que les llega al mail; la primera vez crea la cuenta (perfil "vendedor").
-// La plantilla "Magic Link" de Supabase tiene que mostrar {{ .Token }} para que llegue el código y no solo el link.
-let sesionMail="";
+// La plantilla "Magic Link" de Supabase tiene que mostrar {{ .Token }} para que llegue el código; para editarla Supabase pide
+// SMTP propio. Hasta entonces (MAILS=false) llega el link: vuelve a la web con ?code= y la sesión avisa con "yacar:sesion".
 async function codigoVendedor(email,{nombre,celular}){
  await cargar();
- const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true,data:{rol:"vendedor",nombre,celular}}});
+ const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname,data:{rol:"vendedor",nombre,celular}}});
  if(error) throw error;
 }
 async function verificarVendedor(email,token){
@@ -5102,7 +5112,7 @@ async function iniciar(){
  if(vieneDelMail) history.replaceState(null,"",location.pathname+location.hash);
  if(!session) return;
  sesionMail=session.user.email||"";
- if(!/^#agencias/.test(location.hash)&&!vieneDelMail) return;   // lado vendedor: alcanza con saber quién entró
+ if(!/^#agencias/.test(location.hash)) return;   // lado vendedor: alcanza con saber quién entró (avisa onAuthStateChange)
  await traerAgencia(session.user);
  if(vieneDelMail||/^#agencias/.test(location.hash)) go(A.aprobada()?"subasta":"estado");
 }

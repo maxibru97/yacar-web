@@ -9,7 +9,7 @@ Yacar
 <a href="#seguridad">Vendé tranquilo</a>
 <a href="#preguntas">Preguntas</a>
 <a href="#agencias" class="soyag">Soy agencia</a>
-<a href="#cotizar" class="navcta" data-home>Cotizá gratis</a>
+<a href="#cotizar" class="navcta" data-home>Cotizar gratis</a>
 </nav>
 <button type="button" class="menubtn" id="menuBtn" aria-expanded="false" aria-controls="nav" aria-label="Abrir el menú"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
 <a href="#cotizar" class="salir" id="salir" data-home hidden>Salir</a>
@@ -37,32 +37,29 @@ Yacar
 </div>
 </section>
 
-<section class="sec problema">
-<div class="wrap">
-<h2 class="big">Vender tu auto por tu cuenta <span>es un segundo trabajo.</span></h2>
-<div class="tarjetas cuatro">
-<div class="tarj"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><h3>Semanas publicado</h3><p>Mensajes a toda hora y muchos que solo preguntan el último precio.</p></div>
-<div class="tarj"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12.5l8-8h7v7l-8 8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15" cy="9" r="1.4" fill="currentColor"/></svg></span><h3>Una sola oferta</h3><p>Una agencia sola pone el precio y no tenés con qué compararlo.</p></div>
-<div class="tarj"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-6.5 8 6.5v8.5H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 19.5v-5h4v5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span><h3>Desconocidos en tu casa</h3><p>Mostrarle el auto y cobrarle a alguien que no conocés.</p></div>
-<div class="tarj"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span><h3>De agencia en agencia</h3><p>Manejar hasta cada una y escuchar una oferta distinta en cada lugar.</p></div>
-</div>
-</div>
-</section>
-
-<section class="sec gris" id="como-funciona">
+<section class="sec" id="como-funciona">
 <div class="wrap">
 <div class="intro">
-<h2 class="big">Cómo funciona</h2>
+<h2 class="big">Cómo funciona. <span>Sin el segundo trabajo.</span></h2>
+<p>Vender por tu cuenta lleva semanas. Con Yacar son tres pasos.</p>
 </div>
-<ol class="pasos">
-<li><span class="n">1</span><h3>Cotizá en un minuto</h3><p>Con la patente y los kilómetros ves cuánto pagan las agencias. Después cargás fotos desde el celular.</p></li>
-<li><span class="n">2</span><h3>Las agencias ofertan</h3><p>En la subasta del día, de 10 a 19 h. Si la mejor oferta llega a tu mínimo, vendiste.</p></li>
-<li><span class="n">3</span><h3>Vendés y cobrás</h3><p>La agencia va a ver el auto donde esté y te paga cuando se lo entregás.</p></li>
+<!-- 19/10/2026 (Gonzalo): cada paso con su foto y el dolor que saca (antes había una sección aparte, "Vender tu auto por tu cuenta es un segundo trabajo").
+     Las fotos van en src/fotos/paso1.jpg, paso2.jpg y paso3.jpg (opcionales: sin foto se ve el dibujo). Prompts en app/LEEME.md. -->
+<ol class="pasos-img">
+<li><figure class="pimg p1"><span class="n">1</span><svg class="pil" viewBox="0 0 120 90" aria-hidden="true"><rect x="44" y="12" width="32" height="62" rx="7" fill="#fff" stroke="currentColor" stroke-width="3"/><rect x="50" y="22" width="20" height="10" rx="2" fill="#B8E04A"/><path d="M50 40h20M50 47h14M50 54h17" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="60" cy="66" r="2.5" fill="currentColor"/></svg></figure>
+<p class="dolor"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Chau semanas publicado y mensajes a toda hora</p>
+<h3>Cotizá en un minuto</h3><p>Con la patente y los kilómetros ves cuánto pagan las agencias. Después sacás las fotos desde el celular, guiado.</p></li>
+<li><figure class="pimg p2"><span class="n">2</span><svg class="pil" viewBox="0 0 120 90" aria-hidden="true"><path d="M22 62h76M30 62l7-15c2-5 5-7 10-7h26c5 0 8 2 10 7l7 15" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><circle cx="40" cy="64" r="7" fill="#fff" stroke="currentColor" stroke-width="3"/><circle cx="80" cy="64" r="7" fill="#fff" stroke="currentColor" stroke-width="3"/><path d="M28 30l6-8M60 18v-9M92 30l-6-8" stroke="#B8E04A" stroke-width="4" stroke-linecap="round"/></svg></figure>
+<p class="dolor"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Chau una sola oferta, sin con qué compararla</p>
+<h3>Las agencias compiten</h3><p>Agencias verificadas ofertan por tu auto en la subasta del día. Si la mejor llega a tu mínimo, vendiste.</p></li>
+<li><figure class="pimg p3"><span class="n">3</span><svg class="pil" viewBox="0 0 120 90" aria-hidden="true"><path d="M30 52l14-12 12 6 14-10 20 16-14 14-10-6-8 6z" fill="#fff" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M56 46l10 8M50 56l8 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="92" cy="24" r="9" fill="#B8E04A"/><path d="M88 24l3 3 5-6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></figure>
+<p class="dolor"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Chau desconocidos en tu casa y recorrer agencias</p>
+<h3>Vendés sin moverte</h3><p>La agencia que gana va a ver el auto donde esté y te paga cuando se lo entregás.</p></li>
 </ol>
 </div>
 </section>
 
-<section class="sec">
+<section class="sec gris">
 <div class="wrap">
 <div class="subasta">
 <div class="intro">
@@ -94,18 +91,18 @@ Yacar
 </div>
 </section>
 
-<section class="sec gris" id="seguridad">
+<section class="sec tranquilo" id="seguridad">
 <div class="wrap">
-<div class="intro">
+<div class="tq-izq">
 <h2 class="big">Vendé tranquilo.</h2>
+<p class="tq-plata">Cobrás directo de la agencia. <span>Nunca tocamos tu plata.</span></p>
 </div>
-<div class="tarjetas cuatro">
-<div class="tarj"><span class="ico"><svg width="22" height="22" viewBox="0 0 36 36" aria-hidden="true"><path d="M18 4l11 4v9c0 7-5 12-11 15C12 29 7 24 7 17V8z" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linejoin="round"></path><path d="M13 18l4 4 7-8" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg></span><h3>Solo agencias verificadas</h3><p>Con local, antigüedad y buenas reseñas.</p></div>
-<div class="tarj"><span class="ico"><svg width="22" height="22" viewBox="0 0 36 36" aria-hidden="true"><rect x="8" y="16" width="20" height="15" rx="3" stroke="currentColor" stroke-width="2.4" fill="none"></rect><path d="M12 16v-4a6 6 0 0 1 12 0v4" stroke="currentColor" stroke-width="2.4" fill="none"></path></svg></span><h3>Tus datos son privados</h3><p>Solo la agencia que compra recibe tu contacto.</p></div>
-<div class="tarj"><span class="ico"><svg width="22" height="22" viewBox="0 0 36 36" aria-hidden="true"><path d="M10 4h11l6 6v22H10z" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linejoin="round"></path><path d="M14 21l3 3 6-7" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg></span><h3>Papeles revisados</h3><p>Sin sorpresas el día de la venta.</p></div>
-<div class="tarj"><span class="ico"><svg width="22" height="22" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="13" stroke="currentColor" stroke-width="2.4" fill="none"></circle><path d="M18 10v8l5 3" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg></span><h3>El precio se respeta</h3><p>Si el auto está como lo describiste, la oferta no se toca.</p></div>
-</div>
-<p class="plata"><b>Cobrás directo de la agencia.</b> Nunca tocamos tu plata.</p>
+<ul class="tq-lista">
+<li><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9.5C7.5 20 4 17 4 12V6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h3>Solo agencias verificadas</h3><p>Con local, antigüedad y buenas reseñas.</p></div></li>
+<li><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></span><div><h3>Tus datos son privados</h3><p>Solo la agencia que compra recibe tu contacto.</p></div></li>
+<li><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9.5 13.5l2 2 4-4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h3>Papeles revisados</h3><p>Sin sorpresas el día de la venta.</p></div></li>
+<li><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span><div><h3>El precio se respeta</h3><p>Si el auto está como lo describiste, la oferta no se toca.</p></div></li>
+</ul>
 </div>
 </section>
 
@@ -127,10 +124,15 @@ Yacar
 </div>
 </section>
 
-<section class="cierre">
+<section class="cierre" id="cotizar-fin">
 <div class="wrap">
-<h2>¿Qué esperás? <span>Cotizá tu auto.</span></h2>
-<a class="cta" href="#cotizar" data-home>Ver cuánto vale mi auto</a>
+<h2>¿Cuánto vale tu auto? <span>Enterate en un minuto.</span></h2>
+<div class="cierre-form">
+<label class="placa" for="cierrePat"><span class="banda" aria-hidden="true">REPÚBLICA ARGENTINA</span>
+<input type="text" id="cierrePat" placeholder="AB 123 CD" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Patente de tu auto"></label>
+<button class="cta" type="button" data-cierrepat>Ver cuánto vale</button>
+</div>
+<p class="lema" id="cierreErr" role="status">Gratis y sin compromiso. Las agencias no ven tu patente.</p>
 </div>
 </section>
 </div>

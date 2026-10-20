@@ -15,6 +15,7 @@ Marcas que reemplaza:
   @@incluir:ruta@@              (renglón entero en base.html) → el archivo de src/ tal cual
   /*@json:archivo.json*/null    → el contenido de src/datos/archivo.json, en JSON compacto
   /*@foto:archivo.jpg*/""       → "data:image/jpeg;base64,..." con src/fotos/archivo.jpg (también .pdf, para la ficha)
+  /*@foto?:archivo.jpg*/""      → igual, pero si la foto no está queda "" (19/10: fotos opcionales, ej. las de los pasos del inicio)
 Las marcas de json y foto son JavaScript válido, así que los .js de src/ se pueden revisar con un editor normal.
 """
 import base64
@@ -68,7 +69,8 @@ def armar():
         falta('foto', nombre, 'fotos')
     html = re.sub(r'/\*@json:([^*]+)\*/null', lambda m: json_compacto(m[1]), html)
     html = re.sub(r'/\*@foto:([^*]+)\*/""', lambda m: foto(m[1]), html)
-    resto = re.findall(r'@@incluir:[^@\n]*@@|/\*@(?:json|foto):[^*]*\*/', html)
+    html = re.sub(r'/\*@foto\?:([^*]+)\*/""', lambda m: foto(m[1]) if (SRC / 'fotos' / m[1]).is_file() else '""', html)
+    resto = re.findall(r'@@incluir:[^@\n]*@@|/\*@(?:json|foto\??):[^*]*\*/', html)
     if resto:
         sys.exit(f'ERROR: quedaron marcas sin reemplazar: {resto[:5]}')
     return html

@@ -325,10 +325,11 @@
 .sub .fab{left:16px;right:auto}
 @media (max-width:920px){.sub .fab{bottom:84px}}
 @media (max-width:600px){
- .sub .site nav .vend{display:none}
- .sub .site nav .envivo{font-size:0;padding:4px;gap:0}
- .sub .site nav{gap:12px;flex-wrap:nowrap;font-size:14px;white-space:nowrap}
- .sub .site nav a{font-size:14px}
+ /* 19/10: la misma barra compacta en todo el lado agencias (antes solo en el portal); "Quiero vender mi auto" queda en el pie */
+ .site nav .vend{display:none}
+ .site nav .envivo{font-size:0;padding:4px;gap:0}
+ .site nav{gap:12px;flex-wrap:nowrap;font-size:14px;white-space:nowrap}
+ .site nav a,.site nav .salir{font-size:14px}
  .sub .fab{font-size:12px;padding:6px 11px;opacity:.92}
 }
 
@@ -411,3 +412,29 @@
 .btn.sec{padding:14px 22px}
 .mbtns .btn{padding:12px 20px;font-size:16px}
 .brick input{width:100%;min-width:0}
+/* 18/10 noche (Gonzalo): sin aprobar no hay fotos reales (dibujo genérico); oferta única a sobre cerrado */
+.lfoto.dib,.dib{display:grid;place-items:center;background:linear-gradient(180deg,#EEF1EC,#E3E8E1);position:relative;text-decoration:none}
+.lfoto.dib svg{width:58%;height:auto}
+.dibtag{position:absolute;left:10px;bottom:8px;font-size:11.5px;color:var(--muted);background:rgba(255,255,255,.8);padding:2px 8px;border-radius:999px}
+.bloqlote .lpie{grid-template-columns:1fr}
+.bloqlote .linfo{padding:14px 16px 4px}
+.bloqauto{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:24px;padding:22px;align-items:center;margin-top:14px}
+.bloqauto .dib.grande{aspect-ratio:16/10;border-radius:14px}
+.bloqauto .dib.grande svg{width:70%;height:auto}
+.bloqauto h1{font-size:30px;line-height:1.15}
+.bloqauto .vitri{margin-bottom:0}
+@media (max-width:760px){.bloqauto{grid-template-columns:1fr}}
+.bpmia{background:var(--accent-soft);border-radius:12px;padding:14px 16px}
+.bpmia span{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.bpmia b{display:block;font-family:var(--f-display);font-size:30px;line-height:1.15}
+.bpmia small{font-size:13px;color:var(--muted);display:block}
+.bpmia small::first-letter{text-transform:none}
+.monto.chico input{font-size:20px;padding:8px 6px}
+.monto.chico span{font-size:18px}
+#bpAvisoW .note{font-size:14px;padding:10px 12px;margin:0}
+.feed li.mia a{color:inherit;text-decoration:none}
+/* 19/10: ficha para la transferencia en "Ganaste" */
+.transfp{border:2px solid var(--ok,#1C7444);background:#F4FBF7}
+.transfp .kicker{display:block;margin-bottom:4px}
+.bidpanel .linkbtn[data-act=atransf],.facc .linkbtn[data-act=atransf]{display:inline-block;margin-top:10px}
+

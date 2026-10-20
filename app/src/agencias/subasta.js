@@ -1,15 +1,23 @@
-/* ===================== Portal de subasta para agencias (18/10/2026) =====================
- Pantallas detrás del ingreso (solo agencias aprobadas), con la estructura de las subastas en vivo de Motordil:
-  #agencias/subasta        Subasta de hoy: banda con el reloj, accesos, auto destacado, lista con filtros, últimas pujas (sin montos)
-  #agencias/auto/Y-0001    Página del auto: ficha completa (galería con zoom, estado, mercado, papeles) + panel para ofertar
-  #agencias/ofertas[/tab]  Mis ofertas: activas, esperando al vendedor, ganadas (con "Ir a pagar") y no ganadas
- Reglas: subasta ciega con oferta máxima (paga $50.000 más que la segunda o el mínimo, nunca más que su máximo);
- si no llega al mínimo, el vendedor tiene 24 h (D-47); el fee (1,5%, mínimo $200 mil) se paga recién al ganar (18/10, Maxi).
- Todo es simulado: las otras agencias, el cierre, Mercado Pago y los WhatsApp del bot. Usa lo que expone agencias.js (window.YacarAg). */
+/* ===================== Portal de subasta para agencias (18/10/2026; sobre cerrado desde el 18/10 noche) =====================
+ Estructura de Maxi (subastas en vivo de Motordil); reglas cambiadas por Gonzalo el 18/10 a la noche:
+  #agencias/subasta        Subasta de hoy
+  #agencias/auto/Y-0001    Página del auto + panel para ofertar
+  #agencias/ofertas[/tab]  Mis ofertas: enviadas, esperando al vendedor, ganadas y no ganadas
+ Quién ve qué (3 niveles):
+  0. Sin cuenta: solo que hay subasta hoy, cuántos autos, modelo y año, con un dibujo genérico. Nada más.
+  1. Agencia en revisión: la lista con versión, km y distancia, sin fotos, sin barrio y sin ficha.
+  2. Agencia aprobada: todo, menos el mínimo del vendedor y lo de las otras agencias.
+  En la web real los datos de cada nivel los filtra el servidor (Supabase); acá están en el código porque es un prototipo.
+ Reglas (sobre cerrado):
+  - Una oferta por auto, sin cambios ni cancelación. Nadie ve las ofertas, ni cuántas hay, ni si se llegó al mínimo.
+  - El mínimo del vendedor no se muestra. Gana la oferta más alta y paga lo que ofertó (primer precio).
+  - Si la más alta llega al mínimo, se vende sin preguntarle al vendedor; si no, él tiene 24 h para aceptarla (D-47).
+  - En el piloto no hay fee: al ganar se pasa el contacto del vendedor.
+  - Coordinar ofertas entre agencias está prohibido (Ley 27.442, art. 2 inc. d) y es motivo de baja.
+ Todo es simulado: las ofertas de las otras agencias, el cierre y los WhatsApp del bot. Usa lo que expone agencias.js (window.YacarAg). */
 (()=>{
 const A=window.YacarAg; if(!A) return;
-const {S,byId,esc,fmt,fmtM,feeOf,FEE,ZBY,DEMO_BASE,dist,banda}=A;
-
+const {S,byId,esc,fmt,fmtM,ZBY,DEMO_BASE,dist,banda,carIcon}=A;
 /* ---------- fotos del 208 de Maxi (Y-0001): patente y personas tapadas, sin GPS ---------- */
 const F={
  "34di2":/*@foto:y1_34di2.jpg*/"", frente:/*@foto:y1_frente.jpg*/"", "34di":/*@foto:y1_34di.jpg*/"", "34dd":/*@foto:y1_34dd.jpg*/"",
@@ -35,44 +43,45 @@ const AUTOS=[
   kpi:[["Kilómetros","118.000","declarados"],["Caja","Automática",""],["Dueños","2",""],["Services oficiales","Sí","",1],["Tapizado","Cuero",""],["Cubiertas","Buenas",""]],equip:["Techo solar","Cuero","4x4"],desc:"SUV familiar cuidada, con techo solar."}
 ];
 const BY=Object.fromEntries(AUTOS.map(a=>[a.id,a]));
-const AGS=["Villa Urquiza","Caballito","Morón","San Martín","Vicente López","Flores","Núñez","Ramos Mejía"];
-const PASO=50000;
-const GARANTIA=300000;   // garantía por transferencia para quien no tiene tarjeta de crédito (D: 18/10, "Reserva + garantía")   // la ganadora paga $50.000 más que la segunda
+// Sondeo de mercado con el que entra cada auto a la subasta: cuántos avisos y de qué día (ejemplo).
+const SONDEO={"Y-0001":[23,"17/10"],"Y-0002":[41,"17/10"],"Y-0003":[18,"17/10"],"Y-0004":[12,"17/10"]};
+AUTOS.forEach(a=>{[a.nav,a.sondeo]=SONDEO[a.id]||[0,""]});
+// Dibujo genérico para quien no está aprobado (sin fotos reales del auto). Una foto del modelo de catálogo tiene derechos: ver PASAR_A_REAL.md.
+const DIBUJO={"Y-0001":["#9AA3AA",0],"Y-0002":["#9AA3AA",0],"Y-0003":["#9AA3AA",1],"Y-0004":["#9AA3AA",0]};
+const dibujo=(a,w)=>carIcon(DIBUJO[a.id]?.[0]||"#9AA3AA",w,!!DIBUJO[a.id]?.[1]);
 
 /* ---------- estado del portal ---------- */
-const nuevo=()=>({of:{},fav:new Set(["Y-0001"]),cerrada:false,cierre:0,simulada:false,ultimaAvisada:false,bienvenida:false,guia:true,pagados:{},acepta:{},medio:null,saldo:0,res:{},resto:{},cobro:{},
- filtro:"todos",orden:"score",foto:0,panel:false,borr:{},comp:{},err:"",feed:[]});
+const nuevo=()=>({of:{},fav:new Set(["Y-0001"]),cerrada:false,cierre:0,simulada:false,ultimaAvisada:false,bienvenida:false,guia:true,acepta:{},
+ filtro:"todos",orden:"score",foto:0,panel:false,borr:{},venta:{},comp:{},err:""});
 let ST=nuevo();
 function semilla(){
- const now=Date.now(); let i=0;
- ST.feed=[];
- AUTOS.forEach(a=>a.riv.forEach((_,k)=>{ST.feed.push({ts:now-(9+i*13+k*7)*60000,txt:`Una agencia de ${AGS[(i+k)%AGS.length]} ofertó por el <b>${a.t} ${a.a}</b>`});i++}));
- AUTOS.filter(a=>Math.max(...a.riv)>=a.min).forEach(a=>ST.feed.push({ts:now-4*60000,txt:`El <b>${a.t} ${a.a}</b> llegó al mínimo del vendedor`,ok:1}));
- ST.feed.sort((x,y)=>y.ts-x.ts);
- const n=new Date(),h=n.getHours();
- if(h>=10&&h<19){const t=new Date(n);t.setHours(19,0,0,0);ST.cierre=t.getTime();ST.simulada=false}
+ const now=Date.now(), h=new Date().getHours();
+ if(h>=10&&h<19){const t=new Date();t.setHours(19,0,0,0);ST.cierre=t.getTime();ST.simulada=false}
  else {ST.cierre=now+(2*3600+15*60)*1000;ST.simulada=true}
 }
 semilla();
 
-/* ---------- reglas ---------- */
+/* ---------- reglas: sobre cerrado, primer precio ---------- */
+// a.riv son las ofertas (simuladas) de las otras agencias: no se muestran nunca, ni la cantidad.
 const rivMax=a=>Math.max(0,...a.riv);
 function est(a){
- const m=ST.of[a.id], top=rivMax(a), n=a.riv.length+(m?1:0), mejor=Math.max(top,m?m.max:0), llego=mejor>=a.min;
- if(!m) return {n,llego,mio:false};
- const gano=m.max>top;   // empate: gana la más temprana (las de las otras agencias llegaron antes)
- const precio=gano?Math.min(m.max,Math.max(top+PASO,a.piso,m.max>=a.min?a.min:0)):null;
+ const m=ST.of[a.id];
+ if(!m) return {mio:false};
+ const gano=m.monto>rivMax(a);   // empate: gana la más temprana (las de las otras agencias llegaron antes)
  let fin=null;
- if(ST.cerrada) fin=!gano?"perdida":(m.max>=a.min||ST.acepta[a.id])?"ganada":"vendedor";
- return {n,llego,mio:true,gano,precio,max:m.max,fin};
+ if(ST.cerrada) fin=!gano?"perdida":(m.monto>=a.min||ST.acepta[a.id])?"ganada":"vendedor";
+ return {mio:true,monto:m.monto,at:m.at,gano,fin};
 }
+const nivel=()=>A.aprobada()?2:S.sesion?1:0;
 const restaMs=()=>Math.max(0,ST.cierre-Date.now());
 const hms=ms=>{const s=Math.floor(ms/1000);return [s/3600|0,(s%3600)/60|0,s%60].map(x=>String(x).padStart(2,"0")).join(":")};
 const relojTxt=()=>ST.cerrada?"Cerrada":hms(restaMs());
 const distTxt=a=>banda(dist(ZBY[a.z],ZBY[S.base||DEMO_BASE]))+" de tu agencia";
-const hace=ts=>{const m=Math.max(1,Math.round((Date.now()-ts)/60000));return m<60?`hace ${m} min`:`hace ${Math.round(m/60)} h`};
-const misActivas=()=>AUTOS.filter(a=>ST.of[a.id]).length;
-
+const hora=ts=>new Date(ts).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit",hour12:false});
+const misOfertas=()=>AUTOS.filter(a=>ST.of[a.id]);
+const fotos=a=>a.fotos;
+const vivo=(txt="En vivo")=>ST.cerrada?`<span class="envivo off">Cerrada</span>`:`<span class="envivo"><i></i>${txt}</span>`;
+const pct=(x,b)=>Math.round(x/b*100);
 // Montos en letras, para que el compromiso quede claro ("diecinueve millones ochocientos mil pesos")
 function letras(n){
  const U=["","uno","dos","tres","cuatro","cinco","seis","siete","ocho","nueve","diez","once","doce","trece","catorce","quince","dieciséis","diecisiete","dieciocho","diecinueve","veinte","veintiuno","veintidós","veintitrés","veinticuatro","veinticinco","veintiséis","veintisiete","veintiocho","veintinueve"];
@@ -99,14 +108,6 @@ const IC={
  candado:`<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5" stroke="currentColor" stroke-width="2" fill="none"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" fill="none"/></svg>`,
  pdf:`<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2.8h8l4.5 4.5v13.9H6z" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linejoin="round"/><path d="M13.5 3v4.8h4.8M12 11v6.5m-2.8-2.8L12 17.5l2.8-2.8" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`
 };
-// Vitrina: sin ingresar (o con la agencia sin aprobar) se ve la subasta con los datos clave difuminados.
-// En la web real esos datos no llegan al navegador; acá están en el HTML porque es un prototipo.
-const vit=()=>!A.aprobada();
-const velo=h=>vit()?`<span class="velo" title="Ingresá con tu agencia para verlo">${h}</span>`:h;
-const fotos=a=>vit()?a.fotos.slice(0,4):a.fotos;
-const superados=()=>ST.cerrada?[]:AUTOS.filter(a=>{const e=est(a);return e.mio&&!e.gano});
-const vivo=(txt="En vivo")=>ST.cerrada?`<span class="envivo off">Cerrada</span>`:`<span class="envivo"><i></i>${txt}</span>`;
-
 /* ---------- avisos (lo que mandaría el bot por WhatsApp) ---------- */
 function aviso(tit,txt,link){
  const box=byId("avisos"); if(!box) return;
@@ -121,70 +122,79 @@ function aviso(tit,txt,link){
 
 /* ---------- piezas ---------- */
 function pills(a,e){
- let h="";
- if(ST.cerrada&&e.mio) h+=({ganada:`<span class="pill ok">Ganaste</span>`,vendedor:`<span class="pill warn">Esperando al vendedor</span>`,perdida:`<span class="pill bad">No ganaste</span>`})[e.fin];
- else if(e.mio) h+=e.gano?`<span class="pill ok">Vas ganando</span>`:`<span class="pill bad">Te superaron</span>`;
- if(e.llego&&!(ST.cerrada&&e.mio)) h+=`<span class="pill min">Llegó al mínimo</span>`;
- return h;
+ if(ST.cerrada&&e.mio) return ({ganada:`<span class="pill ok">Ganaste</span>`,vendedor:`<span class="pill warn">Esperando al vendedor</span>`,perdida:`<span class="pill bad">No ganaste</span>`})[e.fin];
+ if(e.mio) return `<span class="pill min">Ofertaste</span>`;
+ return "";
 }
 function lote(a){
  const e=est(a), fav=ST.fav.has(a.id);
  return `<article class="lote card">
   <a class="lfoto" href="#agencias/auto/${a.id}"><img src="${a.fotos[0].src}" alt="${esc(a.t)}" loading="lazy"><span class="lpills">${pills(a,e)}</span><span class="score sm" title="Yacar Score"><b>${a.score}</b>/10</span></a>
-  ${vit()?"":`<button class="favbtn" data-act="fav" data-id="${a.id}" aria-pressed="${fav}" aria-label="${fav?"Dejar de seguir":"Seguir este auto"}">${IC.estrella(fav)}</button>`}
+  <button class="favbtn" data-act="fav" data-id="${a.id}" aria-pressed="${fav}" aria-label="${fav?"Dejar de seguir":"Seguir este auto"}">${IC.estrella(fav)}</button>
   <a class="linfo" href="#agencias/auto/${a.id}">
    <h3>${esc(a.t)} · ${a.a}</h3>
    <p class="num">${a.km.toLocaleString("es-AR")} km · ${esc(a.zl)}</p>
    <p class="muted">${distTxt(a)}</p>
   </a>
-  <div class="lpie"><div><span>Mínimo</span><b class="num">${velo(fmtM(a.min))}</b></div><div><span>Ofertas</span><b class="num">${e.n}</b></div><div><span>Cierra en</span><b class="num" data-clock>${relojTxt()}</b></div></div>
+  <div class="lpie"><div><span>Precio particular</span><b class="num">~${fmtM(a.obj)}</b></div><div><span>Tu oferta</span><b class="num">${e.mio?fmtM(e.monto):"—"}</b></div><div><span>Cierra en</span><b class="num" data-clock>${relojTxt()}</b></div></div>
+ </article>`;
+}
+// Nivel 0 y 1: tarjeta sin foto real, sin barrio y sin ficha.
+function loteBloq(a){
+ const n=nivel();
+ return `<article class="lote card bloqlote">
+  <${n?`a href="#agencias/auto/${a.id}"`:"div"} class="lfoto dib" aria-hidden="true">${dibujo(a,150)}<span class="dibtag">Imagen ilustrativa</span></${n?"a":"div"}>
+  <div class="linfo">
+   <h3>${esc(a.t)} · ${a.a}</h3>
+   ${n?`<p class="num">${esc(a.v.split(" · ")[0])} · ${a.km.toLocaleString("es-AR")} km</p><p class="muted">${distTxt(a)}</p>`:`<p class="muted">Fotos, estado, papeles y mercado: solo para agencias aprobadas.</p>`}
+  </div>
+  <div class="lpie"><div><span>Cierra en</span><b class="num" data-clock>${relojTxt()}</b></div></div>
  </article>`;
 }
 function filtrar(){
  let l=AUTOS.slice();
  if(ST.filtro==="favs") l=l.filter(a=>ST.fav.has(a.id));
  if(ST.filtro==="mias") l=l.filter(a=>ST.of[a.id]);
- if(ST.filtro==="min") l=l.filter(a=>est(a).llego);
+ if(ST.filtro==="sin") l=l.filter(a=>!ST.of[a.id]);
  const b=ZBY[S.base||DEMO_BASE];
- const ord={score:(x,y)=>y.score-x.score||x.km-y.km,cerca:(x,y)=>dist(ZBY[x.z],b)-dist(ZBY[y.z],b),min:(x,y)=>x.min-y.min,ofertas:(x,y)=>est(y).n-est(x).n}[ST.orden];
+ const ord={score:(x,y)=>y.score-x.score||x.km-y.km,cerca:(x,y)=>dist(ZBY[x.z],b)-dist(ZBY[y.z],b),km:(x,y)=>x.km-y.km,anio:(x,y)=>y.a-x.a}[ST.orden];
  return l.sort(ord);
 }
 const proto=extra=>`<div class="proto protorow sim"><span class="ptag">Solo prototipo</span>
  ${ST.cerrada?`<button class="linkbtn" data-act="reabrir">Volver a abrir la subasta</button>`:`${extra||""}<button class="linkbtn" data-act="ultimahora">Pasar a la última hora</button><button class="linkbtn" data-act="cerrar">Cerrar la subasta ahora</button>`}
- ${ST.simulada?`<span class="muted">Fuera del horario de 10 a 19 h el prototipo simula que la subasta está abierta.</span>`:""}</div>`;
+ <span class="muted">Las ofertas de las otras agencias están simuladas y no se ven: el resultado aparece al cierre.${ST.simulada?" Fuera del horario de 10 a 19 h el prototipo simula que la subasta está abierta.":""}</span></div>`;
+const GUIA=`<b>Cómo funciona.</b> Es a sobre cerrado: hacés <b>una sola oferta</b> por auto y no se puede cambiar. Nadie ve tu oferta ni cuántas hay. Gana la más alta y <b>pagás lo que ofertaste</b>. Si llega al mínimo del vendedor, se vende sin preguntarle; si no, él decide en 24 h. Si ganás, <b>vas a ver el auto dentro de las 48 h hábiles</b>.`;
 
 /* ---------- Subasta de hoy ---------- */
-function avisoVitrina(){
- if(!vit()) return "";
- return S.sesion
-  ?`<div class="vitri card"><span class="ic">${IC.candado}</span><div><b>Tu agencia está en revisión.</b> Cuando la aprobemos vas a ver los mínimos, la ficha completa y vas a poder ofertar.</div><div class="vbtns"><a class="btn sec" href="#agencias/estado">Mi agencia</a></div></div>`
-  :`<div class="vitri card"><span class="ic">${IC.candado}</span><div><b>Estás viendo la subasta como invitado.</b> Para ver los mínimos, las ${AUTOS[0].fotos.length} fotos, la ficha completa y ofertar, sumá tu agencia.</div><div class="vbtns"><a class="btn pri" href="#agencias/alta">Sumar mi agencia</a><a class="btn sec" href="#agencias/ingresar">Ingresar</a></div></div>`;
-}
-// Si otra agencia te superó, se ve apenas entrás (además del aviso por WhatsApp).
-function avisoSuperado(){
- const l=superados(); if(!l.length||vit()) return "";
- return `<div class="superado card" role="status">${l.map(a=>`<div class="srow"><img src="${a.fotos[0].src}" alt=""><div><b>Te superaron en el ${esc(a.t)} · ${a.a}</b><span>${ST.volviste?"Mientras no estabas, otra agencia":"Otra agencia"} ofertó más que tu máximo de <b class="num">${fmt(ST.of[a.id].max)}</b>. Quedan <b class="num" data-clock>${relojTxt()}</b> para subirla.</span></div><a class="btn pri" href="#agencias/auto/${a.id}">Subir mi oferta</a></div>`).join("")}</div>`;
-}
-function htmlLista(){
- const d=AUTOS[0], de=est(d), lista=filtrar(), sup=superados().length;
- const chip=(v,l)=>`<button type="button" class="chip sm" data-act="filtro" data-v="${v}" aria-pressed="${ST.filtro===v}">${l}</button>`;
- const seg=AUTOS.slice().sort((x,y)=>(y.sig+ST.fav.has(y.id))-(x.sig+ST.fav.has(x.id)));
- const cards=vit()
-  ?`<a class="sbcard" href="#agencias/subasta" data-act="alista"><span class="ic">${IC.vivo}</span><b>Subastas activas</b><span>${AUTOS.length} autos · cierran 19 h</span></a>
-   <a class="sbcard" href="#agencias/${S.sesion?"estado":"alta"}"><span class="ic">${IC.mano}</span><b>${S.sesion?"Mi agencia":"Sumá tu agencia"}</b><span>${S.sesion?"En revisión":"Gratis, en 4 pasos"}</span></a>
-   <a class="sbcard" href="#agencias/como"><span class="ic">${IC.bandera}</span><b>Cómo funciona</b><span>Subasta ciega, fee solo si ganás</span></a>`
-  :`<a class="sbcard" href="#agencias/subasta" data-act="alista"><span class="ic">${IC.vivo}</span><b>Subastas activas</b><span>${AUTOS.length} autos · cierran 19 h</span></a>
-   <a class="sbcard${sup?" alerta":""}" href="#agencias/ofertas"><span class="ic">${IC.mano}</span><b>Mis ofertas</b><span>${sup?`Te superaron en ${sup} ${sup===1?"auto":"autos"}`:misActivas()?misActivas()+(misActivas()===1?" oferta":" ofertas")+(ST.cerrada?" en la subasta de hoy":" activas"):"Todavía no ofertaste hoy"}</span></a>
-   <a class="sbcard" href="#agencias/ofertas/ganadas"><span class="ic">${IC.bandera}</span><b>Finalizadas</b><span>Ganadas, pagos y visitas</span></a>`;
+function heroSub(cards){
  return `<section class="sbhero"><div class="wrap">
   <div class="sbtop">
    <div><h1>Subasta de hoy ${vivo()}</h1><p>${AUTOS.length} autos de particulares, revisados por Yacar. ${ST.cerrada?"La subasta de hoy ya cerró.":"Ofertás hasta las 19 h."}</p></div>
    <div class="sbclock"><span>${ST.cerrada?"Estado":"Cierra en"}</span><b class="num" data-clock>${relojTxt()}</b><small>${ST.simulada?"Hora simulada (prototipo)":"Hoy a las 19:00"}</small></div>
   </div>
-  <div class="sbcards">${cards}</div>
- </div></section>
+  ${cards?`<div class="sbcards">${cards}</div>`:""}
+ </div></section>`;
+}
+function htmlListaBloq(){
+ const n=nivel();
+ const aviso=n
+  ?`<div class="vitri card"><span class="ic">${IC.candado}</span><div><b>Tu agencia está en revisión.</b> Cuando la aprobemos vas a ver las fotos, el estado, los papeles y el mercado de cada auto, y vas a poder ofertar.</div><div class="vbtns"><a class="btn sec" href="#agencias/estado">Mi agencia</a></div></div>`
+  :`<div class="vitri card"><span class="ic">${IC.candado}</span><div><b>La subasta la ven solo las agencias aprobadas.</b> Sumá tu agencia: la revisamos a mano y, cuando te aprobemos, ves cada auto completo y ofertás.</div><div class="vbtns"><a class="btn pri" href="#agencias/alta">Sumar mi agencia</a><a class="btn sec" href="#agencias/ingresar">Ingresar</a></div></div>`;
+ return heroSub("")+`<div class="wrap sbbody">${aviso}
+  <div class="sbbar"><h2 class="sbh">${ST.cerrada?"Autos de la subasta de hoy":`Hoy hay ${AUTOS.length} autos en subasta`}</h2></div>
+  <div class="lotes bloq4">${AUTOS.map(loteBloq).join("")}</div>
+  <p class="muted chico" style="margin-top:14px">Imágenes ilustrativas: no son los autos de la subasta.</p>
+ </div>`;
+}
+function htmlLista(){
+ if(nivel()<2) return htmlListaBloq();
+ const d=AUTOS[0], de=est(d), lista=filtrar(), mias=misOfertas();
+ const chip=(v,l)=>`<button type="button" class="chip sm" data-act="filtro" data-v="${v}" aria-pressed="${ST.filtro===v}">${l}</button>`;
+ const cards=`<a class="sbcard" href="#agencias/subasta" data-act="alista"><span class="ic">${IC.vivo}</span><b>Subastas activas</b><span>${AUTOS.length} autos · cierran 19 h</span></a>
+   <a class="sbcard" href="#agencias/ofertas"><span class="ic">${IC.mano}</span><b>Mis ofertas</b><span>${mias.length?mias.length+(mias.length===1?" oferta":" ofertas")+(ST.cerrada?" en la subasta de hoy":" enviadas hoy"):"Todavía no ofertaste hoy"}</span></a>
+   <a class="sbcard" href="#agencias/ofertas/ganadas"><span class="ic">${IC.bandera}</span><b>Finalizadas</b><span>Ganadas y visitas</span></a>`;
+ return heroSub(cards)+`
  <div class="wrap sbbody">
-  ${avisoVitrina()}${avisoSuperado()}
   <div class="destwrap">
    <h2 class="sbh">Destacada</h2>
    <article class="destacada card">
@@ -193,32 +203,29 @@ function htmlLista(){
      <div class="drow"><h3>${esc(d.t)} · ${d.a}</h3><span class="score"><b>${d.score}</b>/10<small>Yacar Score</small></span></div>
      <p class="muted">${esc(d.v)}</p>
      <p>${esc(d.desc)}</p>
-     <ul class="dmeta num"><li><b>${d.km.toLocaleString("es-AR")}</b> km</li><li><b>${esc(d.zl)}</b></li><li><b>${de.n}</b> ofertas</li><li><b>${d.sig+ST.fav.has(d.id)}</b> agencias siguiéndolo</li></ul>
-     <div class="dpie"><div><span>Mínimo del vendedor</span><b class="num">${velo(fmt(d.min))}</b></div><div><span>Cierra en</span><b class="num" data-clock>${relojTxt()}</b></div><a class="btn pri" href="#agencias/auto/${d.id}">${vit()?"Ver el auto":ST.of[d.id]?"Ver mi oferta":"Ver y ofertar"}</a></div>
+     <ul class="dmeta num"><li><b>${d.km.toLocaleString("es-AR")}</b> km</li><li><b>${esc(d.zl)}</b></li><li>${distTxt(d)}</li></ul>
+     <div class="dpie"><div><span>Precio particular</span><b class="num">~${fmtM(d.obj)}</b></div><div><span>Cierra en</span><b class="num" data-clock>${relojTxt()}</b></div><a class="btn pri" href="#agencias/auto/${d.id}">${de.mio?"Ver mi oferta":"Ver y ofertar"}</a></div>
     </div>
    </article>
   </div>
   <div class="sbgrid">
    <div>
     <div class="sbbar" id="lista"><h2 class="sbh">Autos en subasta</h2>
-     <div class="chips">${chip("todos","Todos")}${vit()?"":chip("favs","Siguiendo")+chip("mias","Ya oferté")}${chip("min","Llegaron al mínimo")}</div>
-     <label class="orden">Ordenar <select data-act="orden">${[["score","Mejor Yacar Score"],["cerca","Más cerca"],["min","Menor mínimo"],["ofertas","Más ofertas"]].map(([v,l])=>`<option value="${v}" ${ST.orden===v?"selected":""}>${l}</option>`).join("")}</select></label>
+     <div class="chips">${chip("todos","Todos")}${chip("favs","Siguiendo")}${chip("mias","Ya oferté")}${chip("sin","Sin ofertar")}</div>
+     <label class="orden">Ordenar <select data-act="orden">${[["score","Mejor Yacar Score"],["cerca","Más cerca"],["km","Menos km"],["anio","Más nuevos"]].map(([v,l])=>`<option value="${v}" ${ST.orden===v?"selected":""}>${l}</option>`).join("")}</select></label>
     </div>
     <div class="lotes">${lista.length?lista.map(lote).join(""):`<p class="vacio">No hay autos con ese filtro.</p>`}</div>
    </div>
    <aside class="sbside">
-    ${ST.guia?`<div class="guia"><div><b>¿Primera vez en la subasta?</b> Es ciega: ves cuántas ofertas hay y si vas ganando, no los montos. Ponés lo máximo que pagarías y, si ganás, pagás $50.000 más que la segunda (o el mínimo). El fee se reserva al ofertar, se cobra solo si ganás y <b>vas a ver el auto dentro de las 48 h hábiles</b>.</div><button class="x" data-act="cerrarguia" aria-label="Cerrar">×</button></div>`:""}
-    <div class="card feed"><div class="fhead"><h3>Últimas pujas</h3>${vivo()}</div>
-     <ul>${ST.feed.slice(0,7).map(f=>`<li class="${f.ok?"ok":""}${f.mia?" mia":""}"><span>${f.txt}</span><small>${hace(f.ts)}</small></li>`).join("")}</ul>
-     <p class="muted fnota">Sin montos: la subasta es ciega.</p></div>
-    <div class="card seguidos"><h3>Más seguidos</h3><ol>${seg.map(a=>`<li><a href="#agencias/auto/${a.id}"><img src="${a.fotos[0].src}" alt=""><span><b>${esc(a.t)} ${a.a}</b><small>${a.sig+ST.fav.has(a.id)} agencias · ${est(a).n} ofertas</small></span></a></li>`).join("")}</ol></div>
+    ${ST.guia?`<div class="guia"><div>${GUIA}</div><button class="x" data-act="cerrarguia" aria-label="Cerrar">×</button></div>`:""}
+    <div class="card feed"><div class="fhead"><h3>Tus ofertas de hoy</h3>${vivo()}</div>
+     ${mias.length?`<ul>${mias.map(a=>{const e=est(a);return `<li class="mia"><span><a href="#agencias/auto/${a.id}"><b>${esc(a.t)} ${a.a}</b></a> · <b class="num">${fmt(e.monto)}</b></span><small>${ST.cerrada?({ganada:"Ganaste",vendedor:"Esperando al vendedor",perdida:"No ganaste"})[e.fin]:"Enviada a las "+hora(e.at)}</small></li>`}).join("")}</ul>`:`<p class="muted fnota">Todavía no ofertaste. Tus ofertas se abren al cierre de las 19 h.</p>`}
+     <p class="muted fnota">No ves las ofertas de las demás agencias, ni cuántas hay.</p></div>
    </aside>
   </div>
-  ${vit()?"":proto(`<button class="linkbtn" data-act="rival" data-id="${d.id}">Otra agencia oferta por el 208</button>${ST.of[d.id]?`<button class="linkbtn" data-act="volver">Salir y volver más tarde</button>`:""}`)}
+  ${proto("")}
  </div>`;
 }
-
-/* ---------- página del auto ---------- */
 const DIAG=`<svg viewBox="0 0 200 330" class="diag" role="img" aria-label="Vista de arriba del auto con los daños marcados">
  <text x="100" y="12" text-anchor="middle" class="dt">FRENTE</text>
  <rect x="22" y="62" width="18" height="44" rx="6" fill="#1A201C"/><rect x="160" y="62" width="18" height="44" rx="6" fill="#1A201C"/><rect x="22" y="228" width="18" height="44" rx="6" fill="#1A201C"/><rect x="160" y="228" width="18" height="44" rx="6" fill="#1A201C"/>
@@ -241,22 +248,6 @@ function htmlGaleria(a){
  </div>
  ${a.fotos.length>1?`<div class="gthumbs">${fs.map((x,k)=>`<button data-act="verfoto" data-i="${k}" aria-label="${esc(x.l)}" aria-current="${k===i}"><img src="${x.src}" alt="" loading="lazy"></button>`).join("")}${resto?`<a class="glock" href="#agencias/${S.sesion?"estado":"alta"}"><img src="${a.fotos[fs.length].src}" alt=""><span>${IC.candado}+${resto} fotos</span></a>`:""}</div>`:`<p class="proto" style="margin-top:10px"><span class="ptag">Ejemplo</span> En la web real cada auto tiene las 10 fotos obligatorias y la revisión completa, como el Peugeot 208.</p>`}`;
 }
-function escala(a){
- const lo=Math.min(a.piso,a.min)*.93, hi=a.obj*1.05, x=v=>((v-lo)/(hi-lo)*100).toFixed(1)+"%";
- const m=v=>(v/1e6).toLocaleString("es-AR",{maximumFractionDigits:1});
- return `<div class="escala num">
-  <div class="eje"></div><div class="banda" style="left:${x(a.piso)};width:calc(${x(a.techo)} - ${x(a.piso)})"></div>
-  <div class="mk min" style="left:${x(a.min)}"><span>Mínimo · ${m(a.min)} M</span></div>
-  <div class="mk obj" style="left:${x(a.obj)}"><span>Venta al público · ~${m(a.obj)} M</span></div>
-  <span class="tk" style="left:${x(a.piso)}">${m(a.piso)}</span><span class="tk" style="left:${x(a.techo)}">${m(a.techo)}</span>
- </div>
- <p class="leyenda"><i></i>Lo que pagan las agencias por autos así (estimado Yacar)</p>
- <div class="facts num"><div><span>Precio objetivo de venta al público</span><b>${fmtM(a.obj)}</b></div><div><span>Margen bruto si comprás al mínimo</span><b>${fmtM(a.obj-a.min)} · ${Math.round((a.obj-a.min)/a.min*100)}%</b></div><div><span>Avisos comparables</span><b>—</b></div></div>
- <p class="muted chico">El precio objetivo es la mediana de lo que piden los avisos de Mercado Libre, DeRuedas y Autocosmos del mismo modelo, versión, año y km parecidos. El margen es antes del fee, la transferencia y la preparación. Los avisos comparables con link se suman cuando corre el relevamiento del día.</p>`;
-}
-const unite=()=>S.sesion?`<a class="btn sec" href="#agencias/estado">Mi agencia</a>`:`<a class="btn pri" href="#agencias/alta">Sumar mi agencia</a><a class="linkbtn" href="#agencias/ingresar">Ya tengo cuenta</a>`;
-// En la vitrina, la sección se ve difuminada y con el acceso encima.
-const bloq=(h,txt)=>vit()?`<div class="bloq"><div class="bloqin" aria-hidden="true" inert>${h}</div><div class="bloqcta"><span class="ic">${IC.candado}</span><b>${txt}</b><div>${unite()}</div></div></div>`:h;
 // Publicada en claude.ai, la descarga pasa por el permiso "downloads"; abierta desde el Drive, por un link normal.
 async function bajarFicha(){
  const nombre="Yacar_ficha_Y-0001_Peugeot-208.pdf";
@@ -266,109 +257,156 @@ async function bajarFicha(){
  const l=document.createElement("a"); l.download=nombre; l.href=blob?URL.createObjectURL(blob):FICHA_PDF; l.click();
  if(blob) setTimeout(()=>URL.revokeObjectURL(l.href),4000);
 }
+
+// Mercado (18/10 noche, Gonzalo): el sondeo con el que el auto entra a la subasta, sin el mínimo del vendedor.
+// La franja de lo que suelen pagar las agencias es la misma que ve cualquiera en el cotizador del vendedor.
+function escala(a){
+ const lo=a.piso*.9, hi=a.obj*1.06, x=v=>((v-lo)/(hi-lo)*100).toFixed(1)+"%";
+ const m=v=>(v/1e6).toLocaleString("es-AR",{maximumFractionDigits:1});
+ return `<div class="escala num">
+  <div class="eje"></div><div class="banda" style="left:${x(a.piso)};width:calc(${x(a.techo)} - ${x(a.piso)})"></div>
+  <div class="mk obj" style="left:${x(a.obj)}"><span>Precio particular · ~${m(a.obj)} M</span></div>
+  <span class="tk" style="left:${x(a.piso)}">${m(a.piso)}</span><span class="tk" style="left:${x(a.techo)}">${m(a.techo)}</span>
+ </div>
+ <p class="leyenda"><i></i>Lo que suelen pagar las agencias por autos así (estimado Yacar)</p>
+ <div class="facts num"><div><span>Precio particular (mediana de avisos)</span><b>${fmtM(a.obj)}</b></div><div><span>Suelen pagar las agencias</span><b>${fmtM(a.piso)} a ${fmtM(a.techo)}</b></div><div><span>Sondeo</span><b>${a.nav} avisos · ${a.sondeo}</b></div></div>
+ <p class="muted chico">Precio particular: lo que piden los avisos de Mercado Libre, DeRuedas y Autocosmos del mismo modelo, versión y año, llevado a los km de este auto, el día que entró a la subasta. No incluye el mínimo del vendedor.</p>`;
+}
+const PASA=`<details class="asec reglas"><summary><h2>Cómo funciona la subasta</h2></summary>
+ <div class="rgrid"><div><b>A sobre cerrado</b><p>Una oferta por auto, sin cambios ni cancelación. Nadie ve tu oferta ni cuántas hay. Gana la más alta y pagás lo que ofertaste.</p></div>
+ <div><b>El mínimo del vendedor no se ve</b><p>Si la oferta más alta lo alcanza, se vende sin preguntarle. Si queda por debajo, el vendedor tiene 24 h para aceptarla.</p></div>
+ <div><b>Sin fee en el piloto</b><p>Si ganás, te pasamos el contacto del vendedor y la patente para coordinar la visita.</p></div>
+ <div><b>Visita en 48 h hábiles</b><p>Si algo no declarado aparece, proponés un ajuste con fotos. Bajarse sin motivo suspende la cuenta.</p></div>
+ <div><b>Ofertas independientes</b><p>Ponerse de acuerdo con otras agencias para ofertar o no ofertar está prohibido por ley (27.442) y es motivo de baja.</p></div></div></details>`;
+// Nivel 0 y 1: página del auto sin fotos, estado, mercado ni papeles.
+function htmlAutoBloq(a){
+ const n=nivel();
+ return `<div class="wrap sbauto">
+  <a class="volver" href="#agencias/subasta">← Subasta de hoy</a>
+  <div class="card bloqauto">
+   <div class="dib grande" aria-hidden="true">${dibujo(a,260)}<span class="dibtag">Imagen ilustrativa</span></div>
+   <div><h1>${esc(a.t)} · ${a.a}</h1>
+    ${n?`<p class="muted">${esc(a.v.split(" · ")[0])} · ${a.km.toLocaleString("es-AR")} km · ${distTxt(a)}</p>`:""}
+    <div class="vitri" style="margin-top:16px"><span class="ic">${IC.candado}</span><div>${n?"<b>Tu agencia está en revisión.</b> Cuando la aprobemos vas a ver las fotos, el estado, los papeles y el mercado, y vas a poder ofertar.":"<b>Solo para agencias aprobadas.</b> Sumá tu agencia para ver las fotos, el estado, los papeles y el mercado de cada auto."}</div>
+    <div class="vbtns">${n?`<a class="btn sec" href="#agencias/estado">Mi agencia</a>`:`<a class="btn pri" href="#agencias/alta">Sumar mi agencia</a><a class="btn sec" href="#agencias/ingresar">Ingresar</a>`}</div></div>
+   </div>
+  </div>
+ </div>`;
+}
 function htmlAuto(a){
+ if(nivel()<2) return htmlAutoBloq(a);
  const fav=ST.fav.has(a.id);
  const kpi=a.kpi.map(([l,v,s,ok])=>`<div class="kpi"><span>${l}</span><b class="${ok?"okc":""}">${v}</b>${s?`<small>${s}</small>`:""}</div>`).join("")
   +`<div class="kpi zona"><span>Zona</span><b>${esc(a.zl)}</b><small>${distTxt(a)}</small></div>`;
  const estado=a.real?`
   <section class="asec"><h2>Estado del auto</h2><p class="muted">Lo vimos en las fotos con nuestra revisión (IA + aprobación del equipo) el 15/10. No es una inspección presencial.</p>
-   ${bloq(`<div class="estado">${DIAG}<div class="danos">${DANOS.map(([n,c,t,d,tag,fi])=>`<div class="dano"><span class="n ${c}">${n}</span><div><h4>${t}</h4><p>${d}</p><span class="pill ${c}">${tag}</span></div><button class="dfoto" data-lb="${fi}" aria-label="Ver la foto del daño ${n}"><img src="${a.fotos[fi].src}" alt=""></button></div>`).join("")}</div></div>
+   <div class="estado">${DIAG}<div class="danos">${DANOS.map(([n,c,t,d,tag,fi])=>`<div class="dano"><span class="n ${c}">${n}</span><div><h4>${t}</h4><p>${d}</p><span class="pill ${c}">${tag}</span></div><button class="dfoto" data-lb="${fi}" aria-label="Ver la foto del daño ${n}"><img src="${a.fotos[fi].src}" alt=""></button></div>`).join("")}</div></div>
    <blockquote class="cita">"El auto está realmente hermoso, muy cuidado y listo para subirse y disfrutar sin ponerle un peso encima. Le hice un encerado hace poco."<cite>Comentario del vendedor</cite></blockquote>
    <div class="cols2x"><div class="box"><h3>Declarado por el dueño</h3><ul class="lista v"><li>Services oficiales en Peugeot SVA CABA, en tiempo y forma.</li><li>Siempre en cochera cubierta.</li><li>Papeles al día, titular directo, radicado en CABA.</li><li>2 llaves. Se entrega transferido.</li></ul></div>
-   <div class="box"><h3>A confirmar en la visita</h3><ul class="lista"><li>Profundidad del raspón (pulido o pintura).</li><li>Banda de las cubiertas y llanta delantera derecha.</li><li>Baúl y testigos con el motor en marcha.</li><li>Libreta de services.</li></ul></div></div>`,"Ingresá con tu agencia para ver los daños y lo declarado")}
+   <div class="box"><h3>A confirmar en la visita</h3><ul class="lista"><li>Profundidad del raspón (pulido o pintura).</li><li>Banda de las cubiertas y llanta delantera derecha.</li><li>Baúl y testigos con el motor en marcha.</li><li>Libreta de services.</li></ul></div></div>
   </section>`
  :`<section class="asec"><h2>Estado del auto</h2><p class="muted">${esc(a.desc)}</p><p class="proto" style="margin-top:10px"><span class="ptag">Ejemplo</span> Revisión de ejemplo. El Peugeot 208 muestra la revisión completa.</p></section>`;
  return `<div class="wrap sbauto">
   <a class="volver" href="#agencias/subasta">← Subasta de hoy</a>
   <div class="autogrid">
    <div class="automain">
+    ${ST.cerrada&&est(a).fin==="ganada"?transfHTML(a):""}
     ${htmlGaleria(a)}
     <div class="atitle"><div><h1>${esc(a.t)} · ${a.a}</h1><p class="muted">${esc(a.v)}</p>
-     <p class="ameta num"><span>${a.vistas} vistas</span><span>${a.sig+fav} agencias siguiéndolo</span><span>${a.id}</span></p>
-     ${a.real&&!vit()?`<button class="linkbtn pdfbtn" data-act="pdf">${IC.pdf} Descargar la ficha en PDF</button>`:""}</div>
+     <p class="ameta num"><span>${a.id}</span></p></div>
      <div class="atr"><span class="score big"><b>${a.score}</b>/10<small>Yacar Score · según km y estado</small></span>
-     ${vit()?"":`<button class="btn sec favb" data-act="fav" data-id="${a.id}" aria-pressed="${fav}">${IC.estrella(fav)} ${fav?"Siguiendo":"Seguir"}</button>`}</div></div>
+     <button class="btn sec favb" data-act="fav" data-id="${a.id}" aria-pressed="${fav}">${IC.estrella(fav)} ${fav?"Siguiendo":"Seguir"}</button></div></div>
     <div class="kpis">${kpi}</div>
     <div class="equip"><b>Equipamiento</b>${a.equip.map(x=>`<span>${esc(x)}</span>`).join("")}</div>
     ${estado}
-    <section class="asec"><h2>Mercado</h2>${bloq(escala(a),"Ingresá con tu agencia para ver el mercado")}</section>
+    <section class="asec"><h2>Mercado</h2>${escala(a)}</section>
     <section class="asec"><h2>Papeles</h2><p class="muted">El dueño los declara al día. Antes de la subasta revisamos el informe de dominio; multas, deuda y VTV te llegan con el contacto.</p>
-     ${bloq(`<div class="papeles">${["Dominio sin prenda ni embargo","Titular coincide con quien vende","Cédula y título","Radicación"].map(x=>`<div><span>${x}</span><span class="pill ${a.real?"na":"ok"}">${a.real?"A verificar":"En regla"}</span></div>`).join("")}</div>`,"Ingresá con tu agencia para ver los papeles")}</section>
+     <div class="papeles">${["Dominio sin prenda ni embargo","Titular coincide con quien vende","Cédula y título","Radicación"].map(x=>`<div><span>${x}</span><span class="pill ${a.real?"na":"ok"}">${a.real?"A verificar":"En regla"}</span></div>`).join("")}</div></section>
     ${a.real?`<section class="asec"><h2>Fotos</h2><div class="cover"><span class="ok">Esquinas y laterales</span><span class="ok">Asientos delanteros y traseros</span><span class="ok">Tablero encendido</span><span class="ok">Motor</span><span class="na">Baúl</span><span class="na">Banda de cubiertas</span></div></section>`:""}
-    <details class="asec reglas"><summary><h2>Cómo funciona la subasta</h2></summary>
-     <div class="rgrid"><div><b>Ciega, con máximo</b><p>Ves cuántas ofertas hay y si vas ganando, no los montos. Si ganás, pagás $50.000 más que la segunda (o el mínimo), nunca más que tu máximo.</p></div>
-     <div><b>Si llega al mínimo, se vende</b><p>Sin volver a preguntarle al vendedor. Si queda por debajo, el vendedor tiene 24 h para aceptar.</p></div>
-     <div><b>Fee solo si ganás</b><p>1,5% del precio, con mínimo de $200.000. Al ofertar lo reservamos en tu tarjeta de crédito (o usás tu garantía) y se cobra recién si ganás. Ahí recibís el contacto y la patente.</p></div>
-     <div><b>Visita en 48 h hábiles</b><p>Al ofertar te comprometés a ir a verlo dentro de las 48 h hábiles si ganás. Si algo no declarado aparece, proponés un ajuste con fotos. Bajarse sin motivo: se pierde el fee.</p></div></div></details>
+    ${PASA}
    </div>
    <aside class="bidwrap${ST.panel?" abierto":""}" id="bidwrap"><div class="bidpanel card" id="bidpanel">${htmlPanel(a)}</div></aside>
   </div>
-  ${vit()?"":proto(`<button class="linkbtn" data-act="rival" data-id="${a.id}">Otra agencia oferta más</button>${ST.of[a.id]?`<button class="linkbtn" data-act="volver">Salir y volver más tarde</button>`:""}`)}
+  ${proto("")}
  </div>
  <div class="bidbar" id="bidbar">${htmlBarra(a)}</div>
  <div class="bidfondo" data-act="cerrarpanel"></div>`;
 }
 function htmlBarra(a){
  const e=est(a);
- if(vit()) return `<div><span class="num" data-clock>${relojTxt()}</span><b>${e.n} ofertas · mínimo ${velo(fmtM(a.min))}</b></div><button class="btn pri" data-act="abrirpanel">Ofertar</button>`;
- const estado=ST.cerrada?(e.mio?({ganada:"Ganaste",vendedor:"Esperando al vendedor",perdida:"No ganaste"})[e.fin]:"Subasta cerrada"):e.mio?(e.gano?"Vas ganando":"Te superaron"):`${e.n} ofertas · mínimo ${fmtM(a.min)}`;
- return `<div><span class="num" data-clock>${relojTxt()}</span><b class="${e.mio&&!ST.cerrada?(e.gano?"okc":"badc"):""}">${estado}</b></div>${ST.cerrada?`<a class="btn pri" href="#agencias/ofertas">Mis ofertas</a>`:`<button class="btn pri" data-act="abrirpanel">${e.mio?"Mi oferta":"Ofertar"}</button>`}`;
+ const estado=ST.cerrada?(e.mio?({ganada:"Ganaste",vendedor:"Esperando al vendedor",perdida:"No ganaste"})[e.fin]:"Subasta cerrada"):e.mio?`Ofertaste ${fmtM(e.monto)}`:"Sin ofertar";
+ return `<div><span class="num" data-clock>${relojTxt()}</span><b>${estado}</b></div>${ST.cerrada?`<a class="btn pri" href="#agencias/ofertas">Mis ofertas</a>`:`<button class="btn pri" data-act="abrirpanel">${e.mio?"Mi oferta":"Ofertar"}</button>`}`;
 }
-function htmlPanelVit(a){
- const e=est(a);
- return `<div class="bphead">${vivo()}<button class="x solo-cel" data-act="cerrarpanel" aria-label="Cerrar">×</button></div>
-  <div class="bpclock"><span>${ST.cerrada?"Subasta":"Cierra en"}</span><b class="num" data-clock>${relojTxt()}</b></div>
-  <div class="bpmin"><span>Mínimo del vendedor</span><b class="num">${velo(fmt(a.min))}</b><small>Lo ven las agencias aprobadas.</small></div>
-  <div class="bpstats num"><div><b>${e.n}</b><span>ofertas</span></div><div><b>${a.sig}</b><span>siguiendo</span></div><div><b>${e.llego?"Sí":"No"}</b><span>llegó al mínimo</span></div></div>
-  <div class="bpvit"><span class="ic">${IC.candado}</span><b>${S.sesion?"Tu agencia está en revisión":"Para ofertar, sumá tu agencia"}</b><p>${S.sesion?"Cuando la aprobemos vas a ver el mínimo, la ficha completa y vas a poder ofertar.":"Es gratis. Ves los mínimos, las fotos y la revisión completa, y pagás el fee solo si ganás."}</p>${unite()}</div>`;
+// Margen aproximado con el precio al que la agencia cree que lo vende (arranca en lo que piden los avisos).
+function margenTxt(a,oferta){
+ const venta=ST.venta[a.id]??a.obj;
+ if(!oferta||!venta) return "—";
+ const mg=venta-oferta;
+ return `${mg<0?"− ":""}${fmtM(Math.abs(mg))} · ${pct(mg,oferta)}%`;
 }
+function avisoMonto(a,n){
+ if(!n) return "";
+ if(n<a.piso) return `<p class="note warn" id="bpAviso">Está por debajo de lo que suelen pagar las agencias por autos así (desde ${fmtM(a.piso)}). Es probable que el vendedor no la acepte.</p>`;
+ if(n>a.obj) return `<p class="note warn" id="bpAviso">Es más que el precio particular de autos así (~${fmtM(a.obj)}). Revisá el monto.</p>`;
+ return `<p class="note info" id="bpAviso">Dentro de lo que suelen pagar las agencias por autos así.</p>`;
+}
+const V48=`<div class="bp48"><span class="ic">${IC.visita}</span><div><b>Si ganás, vas a verlo en 48 h hábiles</b><span>Te pasamos el contacto del vendedor y coordinás la visita.</span></div></div>`;
 function htmlPanel(a){
- if(vit()) return htmlPanelVit(a);
- const e=est(a), m=ST.of[a.id];
- const minOferta=m?m.max+PASO:a.piso;
- const borr=ST.borr[a.id]??(m?m.max+250000:Math.max(a.min,a.piso));
- let estado="";
+ const e=est(a);
+ const head=`<div class="bphead">${vivo()}<button class="x solo-cel" data-act="cerrarpanel" aria-label="Cerrar">×</button></div>
+  <div class="bpclock"><span>${ST.cerrada?"Subasta":"Cierra en"}</span><b class="num" data-clock>${relojTxt()}</b></div>`;
  if(ST.cerrada){
-  estado=!e.mio?`<div class="note info">La subasta de hoy cerró. ${e.llego?"Este auto se vendió.":"El vendedor está decidiendo si acepta la mejor oferta."}</div>`
-   :e.fin==="ganada"?(ST.pagados[a.id]
-     ?`<div class="note ok"><b>¡Ganaste!</b> Comprás a <b class="num">${fmt(e.precio)}</b>. ${cobroTxt(a)}</div><button class="btn pri block" data-act="contacto" data-id="${a.id}">Ver el contacto del vendedor</button>`
-     :`<div class="note ok"><b>¡Ganaste!</b> Comprás a <b class="num">${fmt(e.precio)}</b>. ${ST.resto[a.id]!=null&&ST.resto[a.id]<feeOf(e.precio)?`Usamos tu garantía y te queda pagar ${fmt(ST.resto[a.id])}`:"Pagá el fee"} para recibir el contacto del vendedor.</div><button class="btn pri block" data-act="pagar" data-id="${a.id}">Ir a pagar · ${fmt(ST.resto[a.id]??feeOf(e.precio))}</button>`)
-   :e.fin==="vendedor"?`<div class="note warn"><b>Tu oferta fue la mejor, pero no llegó al mínimo.</b> El vendedor tiene 24 h para aceptarla. Te avisamos por WhatsApp.</div>`
-   :`<div class="note bad"><b>No ganaste.</b> Otra agencia ofertó más que tu máximo de ${fmt(e.max)}.</div>`;
- } else if(e.mio){
-  estado=e.gano?`<div class="note ok"><b>Vas ganando</b> con tu máximo de <b class="num">${fmt(e.max)}</b>. Si cerrara ahora, pagarías <b class="num">${fmt(e.precio)}</b>${e.max>=a.min?" y el auto es tuyo.":", pero no llega al mínimo: decidiría el vendedor."}</div>`
-   :`<div class="note bad"><b>Te superaron.</b> Otra agencia ofertó más que tu máximo de <b class="num">${fmt(e.max)}</b>. Subí tu oferta para volver a ganar.</div>`;
- } else estado=`<div class="note info">Todavía no ofertaste por este auto.</div>`;
- const v48=`<div class="bp48"><span class="ic">${IC.visita}</span><div><b>Si ganás, vas a verlo en 48 h hábiles</b><span>Es parte del compromiso: pagás el fee, recibís el contacto y coordinás la visita.</span></div></div>`;
- const form=ST.cerrada?"":`
-  <div class="bform">
-   <label for="bpMonto">${m?"Subir mi oferta máxima":"Tu oferta máxima"}</label>
-   <div class="monto"><span>$</span><input id="bpMonto" inputmode="numeric" autocomplete="off" value="${borr.toLocaleString("es-AR")}" aria-describedby="bpAyuda"></div>
-   <div class="rapidos">${(m?[[m.max+250000,"+ $250 mil"],[m.max+500000,"+ $500 mil"],[m.max+1000000,"+ $1 M"]]:[[a.min,"Al mínimo"],[a.min+250000,"+ $250 mil"],[a.min+500000,"+ $500 mil"]]).map(([v,l])=>`<button type="button" class="chip sm" data-act="rapido" data-v="${v}">${l}</button>`).join("")}</div>
-   <p class="ayuda" id="bpAyuda">${m?`Tiene que ser mayor a tu máximo actual (${fmt(m.max)}).`:`Desde ${fmt(a.piso)}. Ponés lo máximo que pagarías: si ganás, pagás $50.000 más que la segunda.`}</p>
-   <p class="letras" id="bpLetras">${letras(borr)}</p>
-   <dl class="bcalc num"><div><dt>Si ganás, pagás</dt><dd id="bpPagas">entre ${fmtM(Math.min(borr,Math.max(a.piso,rivMax(a)+PASO)))} y ${fmtM(borr)}</dd></div><div><dt>Fee de Yacar si ganás</dt><dd id="bpFee">${fmt(feeOf(borr))}</dd></div></dl>
-   <div class="bmedio">${ST.medio?`<span>Fee asegurado con <b>${ST.medio.tipo==="tarjeta"?ST.medio.txt:"tu garantía ("+fmt(ST.saldo)+")"}</b>${m&&ST.res[a.id]?` · reserva de <b class="num">${fmt(ST.res[a.id])}</b>`:""}</span><button class="linkbtn" data-act="medio">Cambiar</button>`:`<span>Antes de tu primera oferta te pedimos una <b>tarjeta de crédito</b> (reservamos el fee, no lo cobramos) o una <b>garantía</b> por transferencia.</span>`}</div>
-   <label class="compromiso"><input type="checkbox" id="bpComp" ${ST.comp[a.id]?"checked":""}><span>Si gano, <b>me comprometo a ir a verlo dentro de las 48 h hábiles y a comprarlo</b> a ese precio si está como se describe.</span></label>
+  const r=!e.mio?`<div class="note info">La subasta de hoy cerró. Mañana a las 9 h te llega la nueva.</div>`
+   :e.fin==="ganada"?`<div class="note ok"><b>¡Ganaste!</b> Comprás a <b class="num">${fmt(e.monto)}</b>, lo que ofertaste.</div><button class="btn pri block" data-act="contacto" data-id="${a.id}">Ver el contacto del vendedor</button><a class="linkbtn" href="#agencias/auto/${a.id}" data-act="atransf">Ficha para la transferencia</a>`
+   :e.fin==="vendedor"?`<div class="note warn"><b>Tu oferta fue la más alta, pero quedó por debajo del mínimo del vendedor.</b> Tiene 24 h para aceptarla. Te avisamos por WhatsApp.</div>`
+   :`<div class="note bad"><b>No ganaste.</b> Otra agencia ofertó más que tus ${fmt(e.monto)}.</div>`;
+  return head+r;
+ }
+ if(e.mio) return head+`<div class="bpmia"><span>Tu oferta</span><b class="num">${fmt(e.monto)}</b><small>Enviada hoy a las ${hora(e.at)} · ${letras(e.monto)}</small></div>
+  <div class="note info">Es tu oferta final: no se puede cambiar ni cancelar. Se abre al cierre de las 19 h y te avisamos por WhatsApp cómo te fue.</div>
+  <dl class="bcalc num"><div><dt>Margen aproximado si lo vendés a ~${fmtM(ST.venta[a.id]??a.obj)}</dt><dd>${margenTxt(a,e.monto)}</dd></div></dl>${V48}`;
+ const n=ST.borr[a.id]||0, venta=ST.venta[a.id]??a.obj;
+ return head+`<div class="bform">
+   <label for="bpMonto">Tu oferta</label>
+   <div class="monto"><span>$</span><input id="bpMonto" inputmode="numeric" autocomplete="off" value="${n?n.toLocaleString("es-AR"):""}" placeholder="0" aria-describedby="bpAyuda"></div>
+   <p class="letras" id="bpLetras">${n?letras(n):""}</p>
+   <p class="ayuda" id="bpAyuda">Una sola oferta, sin cambios. Si ganás, pagás esto.</p>
+   <div id="bpAvisoW">${avisoMonto(a,n)}</div>
+   <label for="bpVenta" style="margin-top:6px">¿A cuánto lo publicarías?</label>
+   <div class="monto chico"><span>$</span><input id="bpVenta" inputmode="numeric" autocomplete="off" value="${venta.toLocaleString("es-AR")}"></div>
+   <dl class="bcalc num"><div><dt>Margen aproximado con tu oferta</dt><dd id="bpMargen">${margenTxt(a,n)}</dd></div><div><dt>Fee de Yacar</dt><dd>$ 0 en el piloto</dd></div></dl>
+   <p class="muted chico">El margen es antes de la transferencia y la preparación. El precio de publicación arranca en el precio particular: cambialo por el tuyo.</p>
+   ${V48}
+   <label class="compromiso"><input type="checkbox" id="bpComp" ${ST.comp[a.id]?"checked":""}><span><b>Es mi oferta final</b>: no se puede cambiar ni cancelar. Si gano, voy a verlo dentro de las 48 h hábiles y <b>lo compro a ese precio</b> si está como se describe.</span></label>
    ${ST.err?`<p class="err" role="alert">${ST.err}</p>`:""}
-   <button class="btn pri block" data-act="ofertar" data-id="${a.id}">${m?"Subir mi oferta":"Ofertar"}</button>
-   ${m?`<button class="linkbtn cancelar" data-act="cancelar" data-id="${a.id}">Cancelar mi oferta</button>`:""}
-   <p class="chico muted">Al ofertar reservamos el fee en tu tarjeta de crédito (o usás tu garantía): se cobra solo si ganás. Podés subir o cancelar tu oferta hasta el cierre.</p>
+   <button class="btn pri block" data-act="ofertar" data-id="${a.id}">Enviar mi oferta</button>
+   <p class="chico muted">Nadie ve tu oferta ni cuántas hay hasta el cierre.</p>
   </div>`;
- return `<div class="bphead">${vivo()}<button class="x solo-cel" data-act="cerrarpanel" aria-label="Cerrar">×</button></div>
-  <div class="bpclock"><span>${ST.cerrada?"Subasta":"Cierra en"}</span><b class="num" data-clock>${relojTxt()}</b></div>
-  <div class="bpmin"><span>Mínimo del vendedor</span><b class="num">${fmt(a.min)}</b><small>${e.llego?"Ya hay una oferta que llega al mínimo: se vende al cierre.":"Si una oferta llega a este número, se vende sin preguntarle al vendedor."}</small></div>
-  <div class="bpstats num"><div><b>${e.n}</b><span>ofertas</span></div><div><b>${a.sig+ST.fav.has(a.id)}</b><span>siguiendo</span></div><div><b>${e.llego?"Sí":"No"}</b><span>llegó al mínimo</span></div></div>
-  ${estado}${ST.cerrada?"":v48}${form}`;
+}
+
+// Ficha para la transferencia (D-44, 16/10; pasada a "Ganaste" el 19/10): le llega a la agencia que ganó, junto con el contacto.
+// Sin DNI, domicilio, estado civil ni carácter del bien del vendedor (PRIVACIDAD_RESUMEN_AGENCIA.md, D-38). Datos de ejemplo.
+function transfHTML(a){
+ const hoy=new Date(), hab=typeof sumarHabiles==="function"?sumarHabiles:(d,n)=>new Date(d.getTime()+n*1.4*864e5);
+ const f=d=>d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"}), fa=d=>d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric"});
+ const dl=(filas,cl)=>`<dl${cl?` class="${cl}"`:""}>${filas.map(([t,v,x])=>`<dt>${t}</dt><dd>${v}${x?`<small>${x}</small>`:""}</dd>`).join("")}</dl>`;
+ const ver=a.v.split(" · ")[0];
+ return `<section class="asec transfp" id="transfP"><span class="kicker">Ganaste este auto</span><h2>Ficha para la transferencia</h2>
+  <p class="muted">Quién firma, dónde y qué papeles están listos para el día de la firma.</p>
+  <div class="cols2" style="margin-top:14px"><div class="box"><h4>Vendedor y auto</h4>${dl([["Vendedor","Vendedor de prueba · WhatsApp 11 0000-0000"],["Identidad","Validada con el RENAPER (DNI + selfie)"],["Auto",`${esc(a.t)} ${esc(ver)} ${a.a} · ${a.km.toLocaleString("es-AR")} km`],["Patente","AA 000 AA"],["Chasis y motor","Te llegan en el PDF del informe","Para verificar en la visita"]],"trdl")}</div>
+  <div class="box"><h4>Quién firma y dónde</h4>${dl([["Dónde","Registro Seccional de la radicación del auto (CABA)"],["Quién firma","Solo el vendedor: es el único titular."],["Formulario 08","Los datos del auto van precargados; los del vendedor salen de su DNI en la firma."]],"trdl")}</div></div>
+  <div class="box informe"><h4>Papeles para el día de la firma</h4>${dl([["Certificado de dominio",`Pedido por el vendedor el ${f(hoy)}. Congela el auto hasta el ${fa(hab(hoy,15))}.`,"Lo pide el titular · Registro del Automotor (DNRPA)"],["Título","Digital: el vendedor lo trae impreso.","Declarado por el vendedor"],["Cédula verde","Foto revisada: coincide con el informe.","Revisado por Yacar"],["Prenda","No tiene.","Registro del Automotor (DNRPA)"],["Verificación policial","La hace el vendedor antes de la firma.","Se revisa el formulario 12"],["Deuda de patente y multas","Consultadas al cerrar la venta, con constancias.","Organismos oficiales"],["VTV y GNC","Se informan con las constancias del día.","VTV y ENARGAS"]])}
+   <p class="fuente">El DNI y el domicilio del vendedor los ves en la firma.</p></div>
+  <p class="proto mini" style="margin-top:12px"><span class="ptag">Prueba</span> Datos de ejemplo.</p></section>`;
 }
 
 /* ---------- Mis ofertas ---------- */
 const HIST=[
- {t:"Volkswagen Gol Trend 1.6",a:2019,km:71000,zl:"Caballito",max:9600000,precio:9350000,fin:"ganada",pagado:true,cuando:"Ayer",visita:"Visita: mañana a las 11 h"},
- {t:"Chevrolet Onix 1.2 LT",a:2021,km:54000,zl:"Flores",max:12800000,fin:"perdida",cuando:"Ayer"}
+ {t:"Volkswagen Gol Trend 1.6",a:2019,km:71000,zl:"Caballito",monto:9350000,fin:"ganada",cuando:"Ayer",visita:"Visita: mañana a las 11 h"},
+ {t:"Chevrolet Onix 1.2 LT",a:2021,km:54000,zl:"Flores",monto:12800000,fin:"perdida",cuando:"Ayer"}
 ];
 function htmlOfertas(tab){
- const mias=AUTOS.filter(a=>ST.of[a.id]).map(a=>({a,e:est(a)}));
+ const mias=misOfertas().map(a=>({a,e:est(a)}));
  const grupos={
   activas:mias.filter(x=>!ST.cerrada),
   vendedor:mias.filter(x=>x.e.fin==="vendedor"),
@@ -376,21 +414,20 @@ function htmlOfertas(tab){
   perdidas:mias.filter(x=>x.e.fin==="perdida")
  };
  const hist=HIST.filter(h=>(tab==="ganadas"&&h.fin==="ganada")||(tab==="perdidas"&&h.fin==="perdida"));
- const tabs=[["activas","Activas"],["vendedor","Esperando al vendedor"],["ganadas","Ganadas"],["perdidas","No ganadas"]];
+ const tabs=[["activas","Enviadas hoy"],["vendedor","Esperando al vendedor"],["ganadas","Ganadas"],["perdidas","No ganadas"]];
  const fila=({a,e})=>{
-  const pagado=ST.pagados[a.id];
-  const acc=ST.cerrada?(e.fin==="ganada"?(pagado?`<button class="btn sec" data-act="contacto" data-id="${a.id}">Ver contacto</button>`:`<button class="btn pri" data-act="pagar" data-id="${a.id}">Ir a pagar ${fmt(ST.resto[a.id]??feeOf(e.precio))}</button>`)
+  const acc=ST.cerrada?(e.fin==="ganada"?`<button class="btn pri" data-act="contacto" data-id="${a.id}">Ver contacto</button><a class="linkbtn" href="#agencias/auto/${a.id}" data-act="atransf">Ficha para la transferencia</a>`
    :e.fin==="vendedor"?`<span class="proto mini"><span class="ptag">Prototipo</span> <button class="linkbtn" data-act="acepta" data-id="${a.id}">El vendedor acepta</button></span>`:"")
-   :`<a class="btn ${e.gano?"sec":"pri"}" href="#agencias/auto/${a.id}">${e.gano?"Ver":"Subir mi oferta"}</a>`;
+   :`<a class="btn sec" href="#agencias/auto/${a.id}">Ver</a>`;
   return `<li class="fila card"><a href="#agencias/auto/${a.id}" class="fth"><img src="${a.fotos[0].src}" alt=""></a>
    <div class="finfo"><b>${esc(a.t)} · ${a.a}</b><span class="num">${a.km.toLocaleString("es-AR")} km · ${esc(a.zl)}</span><span class="fpills">${pills(a,e)}</span></div>
-   <dl class="fnum num"><div><dt>Tu máximo</dt><dd>${fmt(e.max)}</dd></div><div><dt>${ST.cerrada&&e.fin==="ganada"?"Comprás a":"Si cerrara ahora"}</dt><dd>${e.gano?fmt(e.precio):"—"}</dd></div><div><dt>${ST.cerrada?"Fee":"Cierra en"}</dt><dd ${ST.cerrada?"":"data-clock"}>${ST.cerrada?(e.fin==="ganada"?(pagado?(ST.cobro[a.id]?.de==="reserva"?"Cobrado de la reserva":ST.cobro[a.id]?.de==="garantia"?"Cubierto con la garantía":"Pagado"):fmt(ST.resto[a.id]??feeOf(e.precio))):"—"):relojTxt()}</dd></div></dl>
+   <dl class="fnum num"><div><dt>Tu oferta</dt><dd>${fmt(e.monto)}</dd></div><div><dt>${ST.cerrada?"Resultado":"Enviada"}</dt><dd>${ST.cerrada?({ganada:"Comprás a "+fmtM(e.monto),vendedor:"Decide el vendedor",perdida:"Otra agencia"})[e.fin]:"Hoy, "+hora(e.at)}</dd></div><div><dt>${ST.cerrada?"":"Cierra en"}</dt><dd ${ST.cerrada?"":"data-clock"}>${ST.cerrada?"":relojTxt()}</dd></div></dl>
    <div class="facc">${acc}</div></li>`;
  };
- const filaH=h=>`<li class="fila card hist"><div class="fth ic">${IC.bandera}</div><div class="finfo"><b>${h.t} · ${h.a}</b><span class="num">${h.km.toLocaleString("es-AR")} km · ${h.zl} · ${h.cuando}</span><span class="fpills">${h.fin==="ganada"?`<span class="pill ok">Ganaste</span><span class="pill min">Fee pagado</span>`:`<span class="pill bad">No ganaste</span>`}</span></div>
-  <dl class="fnum num"><div><dt>Tu máximo</dt><dd>${fmt(h.max)}</dd></div><div><dt>${h.fin==="ganada"?"Compraste a":"Resultado"}</dt><dd>${h.fin==="ganada"?fmt(h.precio):"Otra agencia"}</dd></div><div><dt>${h.fin==="ganada"?"Próximo paso":""}</dt><dd>${h.visita||""}</dd></div></dl><div class="facc"></div></li>`;
+ const filaH=h=>`<li class="fila card hist"><div class="fth ic">${IC.bandera}</div><div class="finfo"><b>${h.t} · ${h.a}</b><span class="num">${h.km.toLocaleString("es-AR")} km · ${h.zl} · ${h.cuando}</span><span class="fpills">${h.fin==="ganada"?`<span class="pill ok">Ganaste</span>`:`<span class="pill bad">No ganaste</span>`}</span></div>
+  <dl class="fnum num"><div><dt>Tu oferta</dt><dd>${fmt(h.monto)}</dd></div><div><dt>Resultado</dt><dd>${h.fin==="ganada"?"Compraste a "+fmtM(h.monto):"Otra agencia"}</dd></div><div><dt>${h.fin==="ganada"?"Próximo paso":""}</dt><dd>${h.visita||""}</dd></div></dl><div class="facc"></div></li>`;
  const l=grupos[tab]||[];
- return `<section class="sbhero chico"><div class="wrap"><div class="sbtop"><div><h1>Mis ofertas</h1><p>${ST.cerrada?"La subasta de hoy cerró. Acá ves cómo te fue.":"Tus ofertas de la subasta de hoy y las anteriores."}</p></div>
+ return `<section class="sbhero chico"><div class="wrap"><div class="sbtop"><div><h1>Mis ofertas</h1><p>${ST.cerrada?"La subasta de hoy cerró. Acá ves cómo te fue.":"Tus ofertas de hoy se abren al cierre de las 19 h."}</p></div>
   <div class="sbclock"><span>${ST.cerrada?"Estado":"Cierra en"}</span><b class="num" data-clock>${relojTxt()}</b><small>${ST.simulada?"Hora simulada (prototipo)":"Hoy a las 19:00"}</small></div></div></div></section>
  <div class="wrap sbbody">
   <nav class="tabs" aria-label="Mis ofertas">${tabs.map(([k,n])=>`<a href="#agencias/ofertas/${k}" aria-current="${k===tab}">${n} <span class="num">${(grupos[k]||[]).length+HIST.filter(h=>(k==="ganadas"&&h.fin==="ganada")||(k==="perdidas"&&h.fin==="perdida")).length}</span></a>`).join("")}</nav>
@@ -400,93 +437,29 @@ function htmlOfertas(tab){
  </div>`;
 }
 
-/* ---------- modales: confirmar oferta, cancelar, pago y contacto ---------- */
+/* ---------- modales: confirmar la oferta y contacto ---------- */
 function modal(h){const m=byId("modal");m.innerHTML=`<div class="mfondo" data-mact="cerrar"></div><div class="mcaja card">${h}</div>`;m.hidden=false;m.querySelector("button.pri, button")?.focus()}
 function cerrarModal(){const m=byId("modal");m.hidden=true;m.innerHTML=""}
-/* ---------- cómo se asegura el fee: reserva en la tarjeta o garantía (Mercado Pago, simulado) ---------- */
-// Tarjeta: reserva de fondos (capture=false) por el fee máximo de la oferta; al cierre se captura al ganador
-// (puede ser menos de lo reservado) y se cancela al resto. Garantía: $300.000 por transferencia, se usa para el fee.
-function aseguraTxt(a,monto){
- const fee=feeOf(monto), prev=ST.res[a.id];
- if(ST.medio?.tipo==="tarjeta") return `Reservamos <b>${fmt(fee)}</b> en tu ${ST.medio.txt}${prev?` (en lugar de ${fmt(prev)})`:""}: es el fee máximo. <b>Se cobra solo si ganás</b>; si no, se libera al cierre.`;
- return fee<=ST.saldo?`Tu garantía de ${fmt(ST.saldo)} cubre el fee (${fmt(fee)} como máximo). <b>Se usa solo si ganás.</b>`
-  :`Tu garantía cubre ${fmt(ST.saldo)}. Si ganás, la diferencia (hasta ${fmt(fee-ST.saldo)}) la pagás con Mercado Pago dentro de las 24 h; si no, perdés la garantía.`;
-}
-function cobroTxt(a){
- const c=ST.cobro[a.id]; if(!c) return "Fee pagado.";
- return c.de==="reserva"?`Cobramos el fee de ${fmt(c.monto)} de tu reserva${c.res>c.monto?` (habías reservado ${fmt(c.res)}; el resto se liberó)`:""}.`:`Usamos ${fmt(c.monto)} de tu garantía para el fee.`;
-}
-function liquidar(a){
- const fee=feeOf(est(a).precio);
- if(ST.medio?.tipo==="tarjeta"){ ST.cobro[a.id]={de:"reserva",monto:fee,res:ST.res[a.id]||fee}; ST.pagados[a.id]=true; delete ST.res[a.id]; return cobroTxt(a)+" Ya tenés el contacto del vendedor."; }
- const usa=Math.min(fee,ST.saldo); ST.saldo-=usa; ST.resto[a.id]=fee-usa;
- if(!ST.resto[a.id]){ ST.cobro[a.id]={de:"garantia",monto:usa}; ST.pagados[a.id]=true; return `Usamos ${fmt(usa)} de tu garantía para el fee. Ya tenés el contacto del vendedor.`; }
- return `Usamos tu garantía (${fmt(usa)}) y te queda pagar ${fmt(ST.resto[a.id])} con Mercado Pago dentro de las 24 h para recibir el contacto.`;
-}
-const sinMedio=()=>!ST.medio||(ST.medio.tipo==="garantia"&&ST.saldo<=0);
-function medio(a,monto){
- const d=`data-id="${a?.id||""}" data-v="${monto||""}"`;
- modal(`<button class="x" data-mact="cerrar" aria-label="Cerrar">×</button><span class="kicker">${a?"Antes de tu primera oferta":"Medio para asegurar el fee"}</span>
-  <h2>¿Cómo asegurás el fee?</h2>
-  <p class="muted" style="margin:6px 0 14px">El fee (1,5%, mínimo $200.000) se cobra solo si ganás. Para que cada oferta sea en serio, lo dejamos asegurado antes de ofertar.</p>
-  <div class="medios">
-   <button class="medio" data-mact="tarjeta" ${d}><span class="mtag">Recomendado</span><b>Tarjeta de crédito</b><span>Reservamos el fee máximo de cada oferta. Si ganás, lo cobramos al cierre; si no, se libera. No es un cobro: lo ves como consumo pendiente.</span></button>
-   <button class="medio" data-mact="garantia" ${d}><b>Garantía por transferencia</b><span>Transferís ${fmt(GARANTIA)} una vez. Si ganás, se usa para el fee; si ganás y no pagás, se pierde. Para agencias sin tarjeta de crédito.</span></button>
-  </div>
-  <p class="proto mini" style="margin-top:12px"><span class="ptag">Prueba</span> Simulado: en la web real va el formulario seguro de Mercado Pago y términos firmados con penalidad.</p>`);
-}
-function medioTarjeta(d){
- modal(`<button class="x" data-mact="cerrar" aria-label="Cerrar">×</button><span class="kicker">Tarjeta de crédito</span><h2>Cargá tu tarjeta</h2>
-  <div class="brick"><div class="mplogo">Mercado Pago</div>
-   <label>Número de tarjeta<input value="4509 9535 6623 3704" readonly></label>
-   <div class="b2"><label>Vencimiento<input value="11/30" readonly></label><label>Código de seguridad<input value="•••" readonly></label></div>
-   <label>Titular<input value="AGENCIA DE PRUEBA SRL" readonly></label></div>
-  <p class="muted chico" style="margin-top:10px">Solo de crédito. Reservamos el fee de cada oferta y lo cobramos solo si ganás; la reserva dura hasta que se decide la subasta.</p>
-  <div class="mbtns"><button class="btn sec" data-mact="medio" ${d}>Volver</button><button class="btn pri" data-mact="tarjetaok" ${d}>Guardar tarjeta</button></div>
-  <p class="proto mini" style="margin-top:10px"><span class="ptag">Prueba</span> Tarjeta de prueba: no se reserva ni se cobra nada.</p>`);
-}
-function medioGarantia(d){
- modal(`<button class="x" data-mact="cerrar" aria-label="Cerrar">×</button><span class="kicker">Garantía</span><h2>Transferí ${fmt(GARANTIA)}</h2>
-  <dl class="mres num"><div><dt>Alias</dt><dd>YACAR.GARANTIA.PRUEBA</dd></div><div><dt>CBU</dt><dd>0000000000000000000000</dd></div><div><dt>Titular</dt><dd>Yacar (prueba)</dd></div></dl>
-  <ul class="lista v" style="margin-top:12px"><li>Si ganás, se usa para el fee. Si el fee es mayor, pagás la diferencia con Mercado Pago dentro de las 24 h.</li><li>Si ganás y no pagás, perdés la garantía.</li><li>Te la devolvemos cuando dejes de operar.</li></ul>
-  <div class="mbtns"><button class="btn sec" data-mact="medio" ${d}>Volver</button><button class="btn pri" data-mact="garantiaok" ${d}>Ya transferí</button></div>
-  <p class="proto mini" style="margin-top:10px"><span class="ptag">Prueba</span> Datos inventados: no transfieras nada.</p>`);
-}
-function medioListo(a,monto){
- if(a&&monto) return confirmar(a,monto);
- cerrarModal(); pintar();
- aviso("Medio actualizado",ST.medio.tipo==="tarjeta"?`Las próximas reservas van a tu ${ST.medio.txt}.`:`Tu garantía de ${fmt(ST.saldo)} cubre las próximas ofertas.`);
-}
 function confirmar(a,monto){
- const m=ST.of[a.id];
- modal(`<button class="x" data-mact="cerrar" aria-label="Cerrar">×</button><span class="kicker">${m?"Subir tu oferta":"Confirmá tu oferta"}</span>
+ modal(`<button class="x" data-mact="cerrar" aria-label="Cerrar">×</button><span class="kicker">Confirmá tu oferta</span>
   <h2>${esc(a.t)} · ${a.a}</h2>
   <div class="mmonto num">${fmt(monto)}</div><p class="letras">${letras(monto)}</p>
-  <ul class="lista v"><li>Es tu oferta <b>máxima</b>: si ganás, pagás $50.000 más que la segunda (o el mínimo), nunca más que esto.</li><li>${monto>=a.min?"Llega al mínimo del vendedor: si ganás, <b>el auto es tuyo</b> sin preguntarle.":"No llega al mínimo del vendedor: si ganás, él tiene 24 h para aceptar."}</li><li>${aseguraTxt(a,monto)}</li><li><b>Es un compromiso:</b> si ganás, vas a ver el auto dentro de las 48 h hábiles y lo comprás si está como se describe.</li></ul>
-  <div class="mbtns"><button class="btn sec" data-mact="cerrar">Volver</button><button class="btn pri" data-mact="ok" data-id="${a.id}" data-v="${monto}">Confirmar oferta</button></div>`);
+  <ul class="lista v"><li>Es tu <b>única oferta</b> por este auto: después no se puede cambiar ni cancelar.</li><li>Si es la más alta, <b>comprás a este precio</b>. Si llega al mínimo del vendedor, se vende sin preguntarle; si no, él decide en 24 h.</li><li><b>Es un compromiso:</b> si ganás, vas a ver el auto dentro de las 48 h hábiles y lo comprás si está como se describe.</li><li>Ofertás por tu cuenta: ponerse de acuerdo con otras agencias está prohibido y es motivo de baja.</li></ul>
+  <div class="mbtns"><button class="btn sec" data-mact="cerrar">Volver</button><button class="btn pri" data-mact="ok" data-id="${a.id}" data-v="${monto}">Enviar oferta</button></div>`);
 }
-function pagar(a){
- const e=est(a), total=feeOf(e.precio), fee=ST.resto[a.id]??total, gar=total-fee;
- modal(`<button class="x" data-mact="cerrar" aria-label="Cerrar">×</button><span class="kicker">Ganaste</span><h2>${esc(a.t)} · ${a.a}</h2>
-  <dl class="mres num"><div><dt>Precio de compra</dt><dd>${fmt(e.precio)}</dd></div><div class="sub"><dt>Se lo pagás al vendedor el día de la firma</dt><dd></dd></div>${gar?`<div><dt>Fee de Yacar (1,5%, mínimo $200.000)</dt><dd>${fmt(total)}</dd></div><div><dt>Cubierto con tu garantía</dt><dd>− ${fmt(gar)}</dd></div><div class="tot"><dt>Te queda pagar</dt><dd>${fmt(fee)}</dd></div>`:`<div class="tot"><dt>Fee de Yacar (1,5%, mínimo $200.000)</dt><dd>${fmt(fee)}</dd></div>`}</dl>
-  <p class="muted">Al acreditarse el pago te pasamos el nombre, el WhatsApp y la patente, y coordinás la visita dentro de las 48 h hábiles. Si el vendedor declaró mal o se baja, te devolvemos el fee.</p>
-  <button class="btn mp block" data-mact="mp" data-id="${a.id}">Pagar ${fmt(fee)} con Mercado Pago</button>
-  <p class="proto mini" style="margin-top:10px"><span class="ptag">Prueba</span> No se cobra nada: el pago está simulado. Después va el checkout de Mercado Pago.</p>`);
-}
-function procesando(a){
- modal(`<div class="mpsim"><div class="mplogo">Mercado Pago</div><span class="spin"></span><p>Procesando el pago…</p><span class="ptag">Simulado</span></div>`);
- setTimeout(()=>{ST.pagados[a.id]=true;ST.resto[a.id]=0;contacto(a,true);aviso("Pago acreditado",`Ya tenés el contacto del vendedor del ${esc(a.t)}. Coordiná la visita dentro de las 48 h hábiles.`,"#agencias/ofertas/ganadas");},1300);
-}
-function contacto(a,recien){
+function contacto(a){
  const vence=typeof vencePlazoVisita==="function"?vencePlazoVisita(new Date()):null;
  const f=vence?vence.toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"numeric"})+" (48 h hábiles)":"48 h hábiles";
- modal(`<button class="x" data-mact="cerrar" aria-label="Cerrar">×</button>${recien?`<div class="note ok"><b>Pago aprobado.</b> Te mandamos todo también por WhatsApp y mail.</div>`:""}
-  <h2 style="margin-top:12px">Contacto del vendedor</h2>
+ modal(`<button class="x" data-mact="cerrar" aria-label="Cerrar">×</button>
+  <h2 style="margin-top:4px">Contacto del vendedor</h2>
   <dl class="mres num"><div><dt>Vendedor</dt><dd>Vendedor de prueba (titular)</dd></div><div><dt>WhatsApp</dt><dd>11 0000-0000</dd></div><div><dt>Patente</dt><dd>AA 000 AA</dd></div><div><dt>Dónde está el auto</dt><dd>${esc(a.zl)}</dd></div><div><dt>Visita, hasta el</dt><dd>${f}</dd></div></dl>
+  <p class="muted chico">Te lo mandamos también por WhatsApp y mail, con la ficha para la transferencia. En el piloto no hay fee.</p>
   <p class="proto mini"><span class="ptag">Prueba</span> Datos inventados: nunca mostramos datos reales en el prototipo.</p>
-  <div class="mbtns"><button class="btn pri" data-mact="cerrar">Listo</button></div>`);
+  <div class="mbtns"><button class="btn sec" data-mact="transf" data-id="${a.id}">Ficha para la transferencia</button><button class="btn pri" data-mact="cerrar">Listo</button></div>`);
 }
-
+// Lleva a la página del auto ganado, a la ficha para la transferencia.
+function irTransf(a){ cerrarModal(); const ir=()=>setTimeout(()=>byId("transfP")?.scrollIntoView({behavior:Suave.sinMov()?"auto":"smooth"}),80);
+ if(vistaActual==="auto"&&autoActual===a) ir(); else { location.hash="#agencias/auto/"+a.id; setTimeout(ir,150); } }
 /* ---------- lightbox con zoom ---------- */
 let LB={a:null,i:0};
 function lbAbrir(a,i){LB={a,i};lbPintar();byId("lb").hidden=false;document.documentElement.style.overflow="hidden";byId("lb").querySelector(".lbx")?.focus()}
@@ -525,46 +498,27 @@ function pintar(){
  const y=window.scrollY;
  el.innerHTML=vistaActual==="subasta"?htmlLista():vistaActual==="auto"?htmlAuto(autoActual):htmlOfertas(tabActual);
  window.scrollTo(0,y);
- bindMonto(); badge();
+ bindMonto();
+ const b=byId("navSuperado"); if(b) b.hidden=true;   // ya no hay "te superaron": a sobre cerrado no se sabe hasta el cierre
 }
-function badge(){ const b=byId("navSuperado"), n=vit()?0:superados().length; if(b){ b.hidden=!n; b.textContent=n; } }
-function pintarPanel(){ if(vistaActual!=="auto") return pintar(); byId("bidpanel").innerHTML=htmlPanel(autoActual); byId("bidbar").innerHTML=htmlBarra(autoActual); bindMonto(); }
+function pintarPanel(){ if(vistaActual!=="auto"||nivel()<2) return pintar(); byId("bidpanel").innerHTML=htmlPanel(autoActual); byId("bidbar").innerHTML=htmlBarra(autoActual); bindMonto(); }
+const num=v=>+String(v).replace(/\D/g,"").slice(0,10)||0;
 function bindMonto(){
- const i=byId("bpMonto"); if(!i||!autoActual) return; const a=autoActual;
- i.addEventListener("input",()=>{
-  const d=i.value.replace(/\D/g,"").slice(0,10), n=+d||0;
-  ST.borr[a.id]=n; i.value=n?n.toLocaleString("es-AR"):"";
-  byId("bpLetras").textContent=n?letras(n):"";
-  byId("bpFee").textContent=fmt(feeOf(n));
-  byId("bpPagas").textContent=`entre ${fmtM(Math.min(n,Math.max(a.piso,rivMax(a)+PASO)))} y ${fmtM(n)}`;
+ const i=byId("bpMonto"), v=byId("bpVenta"); if(!autoActual) return; const a=autoActual;
+ const recalc=()=>{const n=ST.borr[a.id]||0; byId("bpMargen").textContent=margenTxt(a,n); byId("bpAvisoW").innerHTML=avisoMonto(a,n);};
+ i?.addEventListener("input",()=>{
+  const n=num(i.value); ST.borr[a.id]=n; i.value=n?n.toLocaleString("es-AR"):"";
+  byId("bpLetras").textContent=n?letras(n):""; recalc();
  });
+ v?.addEventListener("input",()=>{ const n=num(v.value); ST.venta[a.id]=n; v.value=n?n.toLocaleString("es-AR"):""; recalc(); });
  byId("bpComp")?.addEventListener("change",e=>{ST.comp[a.id]=e.target.checked});
-}
-function rival(a){
- const m=ST.of[a.id], antes=est(a);
- const v=m?m.max+150000+Math.round(Math.random()*4)*PASO:rivMax(a)+250000;
- a.riv.push(v);
- const ag=AGS[(a.riv.length+3)%AGS.length];
- ST.feed.unshift({ts:Date.now(),txt:`Una agencia de ${ag} ofertó por el <b>${a.t} ${a.a}</b>`});
- if(!antes.llego&&est(a).llego) ST.feed.unshift({ts:Date.now(),txt:`El <b>${a.t} ${a.a}</b> llegó al mínimo del vendedor`,ok:1});
- if(m&&antes.gano) aviso(`Te superaron en el ${esc(a.t)}`,`Otra agencia ofertó más que tu máximo de ${fmt(m.max)}. Quedan ${hms(restaMs())} para subir tu oferta.`,`#agencias/auto/${a.id}`);
- pintar();
-}
-// Prototipo: la agencia sale, otra la supera mientras no está y, al volver, lo ve arriba de todo.
-function volver(){
- AUTOS.forEach(a=>{ const m=ST.of[a.id]; if(m&&est(a).gano){ a.riv.push(m.max+100000+Math.round(Math.random()*3)*PASO); ST.feed.unshift({ts:Date.now()-25*60000,txt:`Una agencia de ${AGS[(a.riv.length+3)%AGS.length]} ofertó por el <b>${a.t} ${a.a}</b>`}); } });
- ST.volviste=true;
- if(vistaActual!=="subasta"){ location.hash="#agencias/subasta"; } else { pintar(); window.scrollTo(0,0); }
- const l=superados();
- if(l.length) setTimeout(()=>aviso("Mientras no estabas",`Te superaron en ${l.map(a=>"el "+esc(a.t)).join(" y ")}. Todavía podés subir tu oferta.`,"#agencias/auto/"+l[0].id),500);
 }
 function cerrar(){
  ST.cerrada=true;
  AUTOS.forEach(a=>{const e=est(a); if(!e.mio) return;
-  const r=ST.res[a.id];
-  if(e.fin==="ganada") aviso(`¡Ganaste el ${esc(a.t)}!`,`Comprás a ${fmt(e.precio)}. ${liquidar(a)}`,"#agencias/ofertas/ganadas");
-  else if(e.fin==="vendedor") aviso(`Tu oferta por el ${esc(a.t)} fue la mejor`,`No llegó al mínimo: el vendedor tiene 24 h para aceptarla.${r?` La reserva de ${fmt(r)} sigue hasta que decida.`:""}`,"#agencias/ofertas/vendedor");
-  else { delete ST.res[a.id]; aviso(`No ganaste el ${esc(a.t)}`,`Otra agencia ofertó más.${r?` Liberamos la reserva de ${fmt(r)}: no se cobra nada.`:""} Mañana a las 9 h te llega la subasta nueva.`); }
+  if(e.fin==="ganada") aviso(`¡Ganaste el ${esc(a.t)}!`,`Comprás a ${fmt(e.monto)}. Ya tenés el contacto del vendedor: coordiná la visita dentro de las 48 h hábiles.`,"#agencias/ofertas/ganadas");
+  else if(e.fin==="vendedor") aviso(`Tu oferta por el ${esc(a.t)} fue la más alta`,`Quedó por debajo del mínimo del vendedor: tiene 24 h para aceptarla.`,"#agencias/ofertas/vendedor");
+  else aviso(`No ganaste el ${esc(a.t)}`,`Otra agencia ofertó más. Mañana a las 9 h te llega la subasta nueva.`);
  });
  pintar();
 }
@@ -580,56 +534,32 @@ function onClick(e){
  if(k==="verfoto"){ ST.foto=+t.dataset.i; return pintar(); }
  if(k==="abrirpanel"){ ST.panel=true; byId("bidwrap").classList.add("abierto"); byId("vSubasta").classList.add("sheet"); return; }
  if(k==="cerrarpanel"){ ST.panel=false; byId("bidwrap")?.classList.remove("abierto"); byId("vSubasta").classList.remove("sheet"); return; }
- if(k==="rapido"){ ST.borr[a.id]=+t.dataset.v; ST.err=""; return pintarPanel(); }
  if(k==="ofertar"){
-  const m=ST.of[a.id], n=ST.borr[a.id]??+(byId("bpMonto").value.replace(/\D/g,""));
-  ST.err=!n||n<a.piso?`La oferta mínima para este auto es ${fmt(a.piso)}.`:m&&n<=m.max?`Para subirla, tiene que ser mayor a tu máximo actual (${fmt(m.max)}).`:n>a.obj*1.5?"Revisá el monto: es mucho más que lo que se pide en los avisos.":!ST.comp[a.id]?"Para ofertar, marcá el compromiso de compra.":"";
+  if(ST.of[a.id]) return pintarPanel();   // una sola oferta por auto
+  const n=ST.borr[a.id]||num(byId("bpMonto").value);
+  ST.err=!n?"Escribí tu oferta.":n<1000000?"Revisá el monto: parece incompleto.":n>a.obj*1.5?"Revisá el monto: es mucho más que el precio particular.":!ST.comp[a.id]?"Para ofertar, marcá que es tu oferta final y el compromiso de compra.":"";
   if(ST.err) return pintarPanel();
-  const monto=Math.round(n/10000)*10000;
-  return sinMedio()?medio(a,monto):confirmar(a,monto);
+  return confirmar(a,Math.round(n/10000)*10000);
  }
- if(k==="cancelar"){ modal(`<h2>¿Cancelar tu oferta?</h2><p class="muted" style="margin:10px 0 18px">Tu máximo de ${fmt(ST.of[a.id].max)} deja de contar. Podés volver a ofertar hasta el cierre.</p><div class="mbtns"><button class="btn sec" data-mact="cerrar">No, dejarla</button><button class="btn pri" data-mact="cancelar" data-id="${a.id}">Sí, cancelarla</button></div>`); return; }
- if(k==="rival"){ return rival(a); }
- if(k==="volver"){ return volver(); }
  if(k==="pdf"){ return bajarFicha(); }
- if(k==="medio"){ return medio(null,0); }
  if(k==="ultimahora"){ ST.cierre=Date.now()+(59*60+40)*1000; ST.simulada=true; ST.ultimaAvisada=false; return pintar(); }
  if(k==="cerrar"){ return cerrar(); }
- if(k==="reabrir"){ ST.cerrada=false; ST.cierre=Date.now()+(2*3600+15*60)*1000; ST.simulada=true; ST.ultimaAvisada=false; return pintar(); }
- if(k==="pagar"){ return pagar(a); }
- if(k==="contacto"){ return contacto(a,false); }
- if(k==="acepta"){ ST.acepta[a.id]=true; aviso(`El vendedor aceptó tu oferta`,`El ${esc(a.t)} es tuyo a ${fmt(est(a).precio)}. ${liquidar(a)}`,"#agencias/ofertas/ganadas"); return pintar(); }
+ if(k==="reabrir"){ ST=Object.assign(nuevo(),{fav:ST.fav,guia:ST.guia}); ST.cierre=Date.now()+(2*3600+15*60)*1000; ST.simulada=true; return pintar(); }
+ if(k==="contacto"){ return contacto(a); }
+ if(k==="atransf"){ e.preventDefault(); return irTransf(a); }
+ if(k==="acepta"){ ST.acepta[a.id]=true; aviso(`El vendedor aceptó tu oferta`,`El ${esc(a.t)} es tuyo a ${fmt(est(a).monto)}. Ya tenés su contacto: coordiná la visita dentro de las 48 h hábiles.`,"#agencias/ofertas/ganadas"); return pintar(); }
 }
 function onModal(e){
  const t=e.target.closest("[data-mact]"); if(!t) return;
  const k=t.dataset.mact, a=BY[t.dataset.id];
  if(k==="cerrar") return cerrarModal();
+ if(k==="transf") return irTransf(a);
  if(k==="ok"){
-  const v=+t.dataset.v, antes=ST.of[a.id];
-  ST.of[a.id]={max:v,at:Date.now()}; ST.borr[a.id]=undefined; ST.err="";
-  if(ST.medio?.tipo==="tarjeta") ST.res[a.id]=feeOf(v);
-  ST.feed.unshift({ts:Date.now(),txt:`Tu agencia ofertó por el <b>${a.t} ${a.a}</b>`,mia:1});
+  if(ST.of[a.id]) return cerrarModal();
+  const v=+t.dataset.v;
+  ST.of[a.id]={monto:v,at:Date.now()}; ST.borr[a.id]=undefined; ST.err="";
   cerrarModal(); ST.panel=false; byId("vSubasta").classList.remove("sheet"); pintar();
-  const e2=est(a);
-  aviso(antes?"Subiste tu oferta":"Oferta confirmada",(e2.gano?`Vas ganando el ${esc(a.t)}. Te avisamos por acá si otra agencia te supera.`:`Otra agencia ofertó más que ${fmt(v)}. Podés subir tu oferta hasta el cierre.`)+(ST.res[a.id]?` Reservamos ${fmt(ST.res[a.id])} en tu tarjeta (se cobra solo si ganás).`:""),`#agencias/auto/${a.id}`);
-  return;
- }
- if(k==="cancelar"){ if(ST.res[a.id]) aviso("Liberamos la reserva",`Los ${fmt(ST.res[a.id])} del ${esc(a.t)} vuelven al límite de tu tarjeta.`); delete ST.res[a.id]; delete ST.of[a.id]; ST.feed=ST.feed.filter(f=>!(f.mia&&f.txt.includes(a.t))); cerrarModal(); return pintar(); }
- if(k==="mp") return procesando(a);
- const d=`data-id="${t.dataset.id||""}" data-v="${t.dataset.v||""}"`, monto=+t.dataset.v||0;
- if(k==="medio") return medio(a,monto);
- if(k==="tarjeta") return medioTarjeta(d);
- if(k==="garantia") return medioGarantia(d);
- if(k==="tarjetaok"){
-  // si venía de garantía, la garantía queda y se devuelve aparte; las reservas nuevas van a la tarjeta
-  ST.medio={tipo:"tarjeta",txt:"Visa •••• 3704"};
-  AUTOS.forEach(x=>{ if(ST.of[x.id]&&!ST.cerrada) ST.res[x.id]=feeOf(ST.of[x.id].max); });
-  return medioListo(a,monto);
- }
- if(k==="garantiaok"){
-  modal(`<div class="mpsim"><span class="spin"></span><p>Buscando tu transferencia…</p><span class="ptag">Simulado</span></div>`);
-  setTimeout(()=>{ ST.medio={tipo:"garantia",txt:"tu garantía"}; ST.saldo=GARANTIA; ST.res={}; medioListo(a,monto); },1100);
-  return;
+  aviso("Oferta enviada",`Ofertaste ${fmt(v)} por el ${esc(a.t)}. Se abre al cierre de las 19 h y te avisamos por acá cómo te fue.`,`#agencias/auto/${a.id}`);
  }
 }
 
@@ -638,10 +568,10 @@ function tick(){
  if(!vistaActual||byId("vSubasta").hidden) return;
  const ms=restaMs();
  byId("vSubasta").querySelectorAll("[data-clock]").forEach(el=>{el.textContent=relojTxt();el.classList.toggle("ultima",!ST.cerrada&&ms<3600000)});
- if(!ST.cerrada&&ms<3600000&&!ST.ultimaAvisada){
+ if(!ST.cerrada&&ms<3600000&&!ST.ultimaAvisada&&nivel()===2){
   ST.ultimaAvisada=true;
-  const mias=AUTOS.filter(a=>ST.of[a.id]||ST.fav.has(a.id));
-  aviso("Queda 1 hora para el cierre",mias.length?`Estás siguiendo ${mias.map(a=>esc(a.t)).join(", ")}. La subasta cierra a las 19 h.`:"La subasta de hoy cierra a las 19 h.","#agencias/subasta");
+  const pend=AUTOS.filter(a=>ST.fav.has(a.id)&&!ST.of[a.id]);
+  aviso("Queda 1 hora para el cierre",pend.length?`Seguís ${pend.map(a=>esc(a.t)).join(", ")} y todavía no ofertaste. La subasta cierra a las 19 h.`:"La subasta de hoy cierra a las 19 h.","#agencias/subasta");
  }
  if(!ST.cerrada&&ms===0) cerrar();
 }
@@ -657,9 +587,12 @@ window.YacarSubasta={
   byId("vSubasta").classList.remove("sheet");
   pintar();
   if(prev!==v||antes!==autoActual){ window.scrollTo(0,0); Suave.entrar(byId("vSubasta"),"fade"); }
-  if(!ST.bienvenida&&!vit()){ ST.bienvenida=true; setTimeout(()=>aviso("Subasta de hoy: "+AUTOS.length+" autos","Abre a las 10 h y cierra a las 19 h. El Peugeot 208 Feline 2022 coincide con lo que buscás.","#agencias/auto/Y-0001"),600); }
+  if(!ST.bienvenida&&nivel()===2){ ST.bienvenida=true; setTimeout(()=>aviso("Subasta de hoy: "+AUTOS.length+" autos","Abre a las 10 h y cierra a las 19 h. El Peugeot 208 Feline 2022 coincide con lo que buscás.","#agencias/auto/Y-0001"),600); }
  },
- reset(){ ST=nuevo(); semilla(); AUTOS.forEach(a=>{a.riv=a.riv.slice(0,a.id==="Y-0003"?2:3)}); }
+ reset(){ ST=nuevo(); semilla(); },
+ // Para la landing de una agencia aprobada (agencias.js): mismos autos y mismo reloj que el portal.
+ autos:()=>AUTOS.map(a=>({t:a.t,a:a.a,km:a.km,zl:a.zl,z:a.z,src:a.fotos[0].src})),
+ reloj:()=>relojTxt(), cerrada:()=>ST.cerrada
 };
 byId("vSubasta").addEventListener("click",onClick);
 byId("vSubasta").addEventListener("change",e=>{ if(e.target.matches("select[data-act=orden]")){ ST.orden=e.target.value; pintar(); } });

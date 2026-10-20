@@ -47,7 +47,7 @@ const ZONAS_RAW=[
 ["sanvicente","San Vicente",-35.025,-58.423,"p"],["marcospaz","Marcos Paz",-34.780,-58.838,"p"],["grodriguez","Gral. Rodríguez",-34.608,-58.952,"p"],
 ["canuelas","Cañuelas",-35.052,-58.760,"p",1],["laplata","La Plata",-34.921,-57.955,"p",1],["ensenada","Ensenada",-34.864,-57.912,"p"],
 ["berisso","Berisso",-34.873,-57.886,"p"]];
-const ZONAS=ZONAS_RAW.map(([id,n,lat,lon,t,lbl])=>{const [x,y]=P(lat,lon);return {id,n,x,y,t,lbl:!!lbl,full:t==="b"?n+", CABA":n}});
+const ZONAS=ZONAS_RAW.map(([id,n,lat,lon,t,lbl])=>{const [x,y]=P(lat,lon);return {id,n,x,y,lat,lon,t,lbl:!!lbl,full:t==="b"?n+", CABA":n}});
 const ZBY=Object.fromEntries(ZONAS.map(z=>[z.id,z]));
 const COAST=[[-34.20,-58.80],[-34.26,-58.80],[-34.36,-58.66],[-34.42,-58.57],[-34.47,-58.50],[-34.52,-58.465],[-34.545,-58.44],[-34.575,-58.40],[-34.595,-58.36],[-34.625,-58.345],[-34.66,-58.32],[-34.70,-58.25],[-34.74,-58.17],[-34.79,-58.06],[-34.84,-57.93],[-34.88,-57.84],[-34.88,-57.60],[-34.20,-57.60]].map(([a,b])=>P(a,b));
 const CABA=[[-34.535,-58.465],[-34.546,-58.50],[-34.57,-58.53],[-34.615,-58.53],[-34.655,-58.53],[-34.69,-58.47],[-34.70,-58.46],[-34.66,-58.42],[-34.645,-58.38],[-34.635,-58.355],[-34.61,-58.36],[-34.59,-58.37],[-34.57,-58.40],[-34.545,-58.44]].map(([a,b])=>P(a,b));
@@ -93,9 +93,9 @@ const sinMails=()=>!!(window.YacarCuenta?.real&&!window.YacarCuenta.mails);
 const perfilOk=()=>cuitOk(S.cuit)&&S.cuitVerif==="nuevo"&&datosOk();
 
 /* ---------- mapa ----------
- Mapa esquemático en km (1 unidad = 1 km, centro en Caballito). Divisiones aproximadas: celdas armadas a partir del
- punto de cada barrio o partido (diagrama de Voronoi), recortadas por el límite de CABA y la costa. Sirven para ver la
- zona de un vistazo, no son límites oficiales. Con zoom, el encuadre sigue al radio elegido y cambia con una transición. */
+ Mapa en km (1 unidad = 1 km, centro en Caballito) con los límites oficiales de barrios y partidos (zonas_geo.json, más abajo).
+ Qué zonas entran por radio se calcula con el punto de cada una (autoZonas). Con zoom, el encuadre sigue al radio elegido
+ y cambia con una transición. (Hasta el 18/10 las divisiones eran aproximadas, un diagrama de Voronoi.) */
 const VB=[-50,-44,106,102];
 function carIcon(col="#B8C2C9",w=64,pickup=false){
  const body=pickup
@@ -105,26 +105,15 @@ function carIcon(col="#B8C2C9",w=64,pickup=false){
 }
 const fotoOIcono=(c,w)=>c.foto&&FOTOS[c.foto]?`<img src="${FOTOS[c.foto]}" alt="${esc(c.t)}">`:carIcon(c.col,w,c.pickup);
 function autoZonas(baseId,radio){const b=ZBY[baseId];if(!b) return new Set();return new Set(ZONAS.filter(z=>dist(z,b)<=radio).map(z=>z.id))}
-// Celda de cada zona: se recorta un rectángulo con la mediatriz entre la zona y cada una de las otras.
-function voronoi(sitios,caja){
- const [x0,y0,w,h]=caja, cel={};
- for(const s of sitios){
-  let poly=[[x0,y0],[x0+w,y0],[x0+w,y0+h],[x0,y0+h]];
-  for(const t of sitios){
-   if(t===s||!poly.length) continue;
-   const nx=t.x-s.x, ny=t.y-s.y, c=(t.x*t.x+t.y*t.y-s.x*s.x-s.y*s.y)/2, f=p=>p[0]*nx+p[1]*ny-c, out=[];
-   for(let i=0;i<poly.length;i++){
-    const p=poly[i], q=poly[(i+1)%poly.length], fp=f(p), fq=f(q);
-    if(fp<=0) out.push(p);
-    if((fp<0&&fq>0)||(fp>0&&fq<0)){const k=fp/(fp-fq);out.push([p[0]+(q[0]-p[0])*k,p[1]+(q[1]-p[1])*k])}
-   }
-   poly=out;
-  }
-  cel[s.id]=poly;
- }
- return cel;
-}
-const CELDAS=Object.assign(voronoi(ZONAS.filter(z=>z.t==="p"),[-160,-140,330,300]),voronoi(ZONAS.filter(z=>z.t==="b"),[-25,-20,45,40]));
+// Límites reales (18/10/2026, noche): barrios del GCBA (vía OpenDataCordoba/barrios) y partidos del IGN (vía
+// mgaitan/departamentos_argentina), simplificados con mapshaper en src/datos/zonas_geo.json (~80 KB): las 82 zonas,
+// 18 partidos vecinos (solo para que la costa y el resto de la provincia se vean como tierra) y el contorno de CABA.
+// Se dibujan en el mismo sistema en km (P) que el resto del mapa; sin servicios externos ni claves.
+const ZGEO=/*@json:zonas_geo.json*/null;
+const dPath=polys=>polys.map(p=>p.map(r=>"M"+r.map(([la,lo])=>P(la,lo).map(v=>v.toFixed(2)).join(",")).join("L")+"Z").join("")).join("");
+const CELDAS=Object.fromEntries(Object.entries(ZGEO.zonas).map(([id,ps])=>[id,dPath(ps)]));
+const CTX=Object.values(ZGEO.contexto).map(dPath).join("");
+const LIMCABA=dPath(ZGEO.caba);
 const poly=pts=>pts.map(p=>p.map(v=>v.toFixed(2)).join(",")).join(" ");
 // Encuadre según el radio: la zona entera más un margen. Con el radio chico se ve más de cerca.
 function encuadre(b,radio){const m=Math.max(radio*1.3,9), hm=m*VB[3]/VB[2];return [b.x-m,b.y-hm,2*m,2*hm]}
@@ -136,14 +125,10 @@ function drawMap(svg,{baseId,radio,sel,onToggle,area,vb,labels=true,small=false,
  let st=MAPAS.get(svg);
  if(!st||st.clave!==clave){
   const uid=svg.id||"m"+Math.random().toString(36).slice(2,7);
-  let h=`<defs><clipPath id="${uid}-caba"><polygon points="${poly(CABA)}"/></clipPath></defs>`;
-  h+=`<rect x="-200" y="-200" width="420" height="420" fill="#F1EEE4"/>`;
-  const celda=z=>`<polygon class="cell${z.t==="b"?" b":""}" data-z="${z.id}" points="${poly(CELDAS[z.id])}"><title>${z.full}</title></polygon>`;
-  h+=`<g class="cells">${ZONAS.filter(z=>z.t==="p").map(celda).join("")}</g>`;
-  h+=`<polygon points="${poly(CABA)}" fill="#ECE7DA"/>`;
-  h+=`<g class="cells" clip-path="url(#${uid}-caba)">${ZONAS.filter(z=>z.t==="b").map(celda).join("")}</g>`;
-  h+=`<polygon points="${poly(COAST)}" fill="#CDE2E3"/>`;
-  h+=`<polygon class="limcaba" points="${poly(CABA)}"/>`;
+  let h=`<rect x="-200" y="-200" width="420" height="420" fill="#CDE2E3"/><path class="ctx" d="${CTX}"/>`;   // el agua es el fondo; la tierra, los partidos
+  const celda=z=>`<path class="cell${z.t==="b"?" b":""}" data-z="${z.id}" fill-rule="evenodd" d="${CELDAS[z.id]}"><title>${z.full}</title></path>`;
+  h+=`<g class="cells">${ZONAS.filter(z=>CELDAS[z.id]).map(celda).join("")}</g>`;
+  h+=`<path class="limcaba" d="${LIMCABA}"/>`;
   if(!small) h+=`<text class="lbl agua" data-px="12" x="32" y="-10">Río de la Plata</text>`;
   h+=`<circle class="radio" cx="${b?b.x:0}" cy="${b?b.y:0}" r="0" ${b&&radio?"":"hidden"}/>`;
   if(area){const z=ZBY[area];h+=`<circle class="area" cx="${z.x}" cy="${z.y}" r="${small?7:4.5}"/>`;}
@@ -212,10 +197,12 @@ const OPS=[
 ];
 const dias=n=>n+(n===1?" día":" días");
 function heroLots(){
- const b=ZBY[S.base||DEMO_BASE];
- byId("heroLots").innerHTML=CARS.slice(0,3).map(c=>`<li class="lot"><div class="thumb">${fotoOIcono(c,66)}</div><div class="info"><div class="t">${c.t} ${c.a}</div><div class="s num">${c.km.toLocaleString("es-AR")} km · ${c.zl}</div><div class="s num">${banda(dist(ZBY[c.z],b))} · ${c.of} ofertas</div></div><div class="p"><span>Mínimo</span><b class="num">${fmtM(c.min)}</b></div></li>`).join("");
+ // 19/10: los mismos autos y el mismo reloj que el portal (subasta.js), sin mínimo ni cantidad de ofertas.
+ const b=ZBY[S.base||DEMO_BASE], P2=window.YacarSubasta;
+ const autos=P2?P2.autos().slice(0,3):CARS.slice(0,3).map(c=>({t:c.t,a:c.a,km:c.km,zl:c.zl,z:c.z,src:fotoDe(c.foto)}));
+ byId("heroLots").innerHTML=autos.map(c=>`<li class="lot"><div class="thumb">${c.src?`<img src="${c.src}" alt="${esc(c.t)}">`:carIcon("#9AA3AA",66)}</div><div class="info"><div class="t">${c.t} ${c.a}</div><div class="s num">${c.km.toLocaleString("es-AR")} km · ${c.zl}</div><div class="s num">${banda(dist(ZBY[c.z],b))}</div></div></li>`).join("");
 }
-// La landing y la subasta son públicas; los mínimos, la ficha completa y ofertar, solo para agencias aprobadas (subasta.js, vitrina).
+// La landing es pública. La subasta tiene 3 niveles (18/10 noche): sin cuenta casi nada, en revisión la lista sin fotos, aprobada todo menos el mínimo (subasta.js).
 function renderLanding(){
  const ok=aprobada();
  byId("heroBtns").innerHTML=ok
@@ -225,10 +212,10 @@ function renderLanding(){
    :`<button class="btn pri" data-go="alta">Sumar mi agencia</button><a class="btn ondark" href="#agencias/subasta">Ver la subasta de hoy</a>`;
  byId("heroCard").innerHTML=ok
   ?`<div class="card"><div class="cardhead"><h3>Subasta de hoy</h3><span class="clock num" id="clock1">--</span></div><ul class="lotlist" id="heroLots"></ul><div class="cardfoot"><span class="ptag">Solo prototipo</span><span>Autos de ejemplo cerca de ${ZBY[S.base||DEMO_BASE].n}</span></div></div>`
-  :`<div class="card"><div class="cardhead"><h3>Operaciones cerradas</h3><span class="clock">Ejemplos</span></div><ul class="lotlist">${OPS.slice(0,3).map(o=>`<li class="lot"><div class="thumb">${carIcon(o.col,66,!!o.pickup)}</div><div class="info"><div class="t">${o.t} ${o.a}</div><div class="s num">${o.km.toLocaleString("es-AR")} km · ${o.zl}</div><div class="s">${o.of} ofertas · compra en ${dias(o.dias)}</div></div><div class="p"><span>Compró en</span><b class="num">${fmtM(o.compra)}</b></div></li>`).join("")}</ul><div class="cardfoot"><span class="ptag">Solo prototipo</span><span>Ejemplos ilustrativos. La subasta la ven solo las agencias aprobadas.</span></div></div>`;
+  :`<div class="card"><div class="cardhead"><h3>Operaciones cerradas</h3><span class="clock">Ejemplos</span></div><ul class="lotlist">${OPS.slice(0,3).map(o=>`<li class="lot"><div class="thumb">${carIcon(o.col,66,!!o.pickup)}</div><div class="info"><div class="t">${o.t} ${o.a}</div><div class="s num">${o.km.toLocaleString("es-AR")} km · ${o.zl}</div><div class="s">De la subasta a la compra: ${dias(o.dias)}</div></div><div class="p"><span>Compró en</span><b class="num">${fmtM(o.compra)}</b></div></li>`).join("")}</ul><div class="cardfoot"><span class="ptag">Solo prototipo</span><span>Ejemplos ilustrativos. La subasta la ven solo las agencias aprobadas.</span></div></div>`;
  if(ok){ heroLots(); tick(); }
- byId("opsLanding").innerHTML=OPS.map(o=>`<div class="card op"><div class="opth">${carIcon(o.col,96,!!o.pickup)}</div><div class="opi"><b>${o.t} ${o.a}</b><span class="num">${o.km.toLocaleString("es-AR")} km · ${o.zl}</span><span>${o.of} ofertas · la compró ${o.ag}</span></div><dl><div><dt>Compró en</dt><dd class="big num">${fmtM(o.compra)}</dd></div><div><dt>Autos así se publican a</dt><dd class="num">${fmtM(o.ref)}</dd></div><div><dt>De la subasta a la compra</dt><dd>${dias(o.dias)}</dd></div></dl></div>`).join("");
- byId("ficha").hidden=!ok; byId("operaciones").hidden=ok;
+ byId("opsLanding").innerHTML=OPS.map(o=>`<div class="card op"><div class="opth">${carIcon(o.col,96,!!o.pickup)}</div><div class="opi"><b>${o.t} ${o.a}</b><span class="num">${o.km.toLocaleString("es-AR")} km · ${o.zl}</span><span>La compró una agencia de la zona</span></div><dl><div><dt>Compró en</dt><dd class="big num">${fmtM(o.compra)}</dd></div><div><dt>Autos así se publican a</dt><dd class="num">${fmtM(o.ref)}</dd></div><div><dt>De la subasta a la compra</dt><dd>${dias(o.dias)}</dd></div></dl></div>`).join("");
+ byId("ficha").hidden=true; byId("operaciones").hidden=ok;   // 18/10 noche: la ficha vieja de la landing (con el mínimo) ya no se muestra; la ficha está en el portal
 }
 function ficha(){
  const main=byId("fichaMain");
@@ -293,7 +280,7 @@ function waMsgs(target){
  target.innerHTML=`<div class="top">${LOGO}<div><b>Yacar Agencias</b><small>cuenta de empresa</small></div></div>
  <div class="bubble"><b>Buen día, ${esc(nom)}. Subasta de hoy en tu zona</b><br>7 autos nuevos: 3 autos, 2 SUV y 2 pickups.<br>Fotos, estado y papeles revisados.<br>Abre a las 10 h y cierra a las 19 h.<br>Ver los autos: <span class="lnk">yacar.com.ar/hoy</span><div class="h">9:00</div></div>
  <div class="bubble"><b>Queda 1 hora.</b> La subasta cierra a las 19 h y todavía no ofertaste por 2 autos de tu zona.<div class="h">18:00</div></div>
- <div class="bubble"><b>¡Ganaste un auto!</b> Pagá el fee y te pasamos el contacto del vendedor para coordinar la visita.<div class="h">19:02</div></div>`;
+ <div class="bubble"><b>¡Ganaste un auto!</b> Te pasamos el contacto del vendedor para coordinar la visita.<div class="h">19:02</div></div>`;
 }
 const VERIF=[
  ["Local en Google Maps","Con reseñas de clientes."],
@@ -437,7 +424,7 @@ function renderFlujo(){
   <div>${chips("radio",[["10","10 km"],["20","20 km"],["30","30 km"],["50","50 km"]],v=>+v===S.radio)}</div>
   <div class="mapwrap" style="padding:10px"><svg class="map" id="altaMap" data-vivo="1" role="group" aria-label="Mapa de zonas: tocá una para sumarla o sacarla"></svg>
    <div class="legend"><span><i class="sq on"></i>En tu zona</span><span><i class="sq"></i>Fuera de tu zona</span><span><i style="background:#123F2C;border-radius:2px"></i>Tu local</span></div>
-   <p class="mapnota">Divisiones aproximadas, para ubicarte.</p></div>
+   <p class="mapnota">Límites oficiales de barrios (GCBA) y partidos (IGN).</p></div>
   <p class="selsum" aria-live="polite"><b>${nb}</b> barrios de CABA y <b>${np}</b> partidos del GBA ${S.tocadas?"(ajustado a mano)":""}</p>
   ${lista.length?zonasLista(lista):`<div class="note warn">No elegiste ninguna zona. Sumá al menos una para recibir autos.</div>`}
   <label class="check"><input type="checkbox" id="fuera" ${S.fuera?"checked":""}><span>Mostrame también los autos de fuera de mi zona (aparecen aparte).</span></label>
@@ -531,9 +518,9 @@ function estadoHTML(){
  +`<div class="box"><h4>Tu cuenta</h4><ul>
    <li><span><b>Zona:</b> desde ${base?base.full:"-"}${S.cpRes?.cp?" (CP "+S.cpRes.cp+")":""}, ${nb} barrios de CABA y ${np} partidos · <button class="linkbtn" data-go="alta" data-p="3">Editar</button></span></li>
    <li><span><b>Avisos:</b> ${OPC.wa.find(o=>o[0]===S.waModo)[1]}${S.recordatorio&&S.waModo!=="no"?" + recordatorio 18 h":""}${S.mail?" + mail":""} · <button class="linkbtn" data-go="alta" data-p="4">Editar</button></span></li>
-   <li><span><b>Fee:</b> 1,5% del precio de compra, mínimo $200 mil · 0 compras este mes</span></li>
+   <li><span><b>Fee:</b> sin costo durante el piloto · 0 compras este mes</span></li>
   </ul></div>`
- +(st==="ok"?`<a class="btn pri block" href="#agencias/ficha">Ver la subasta de hoy</a><div class="proto"><span class="ptag">Solo prototipo</span> Por ahora la subasta muestra un auto de ejemplo. El portal completo (ofertar, mis ofertas, ganados) se arma después: PROPUESTA_AGENCIAS_Y_SUBASTA.md, pantallas 2 a 8.</div>`:"");
+ +(st==="ok"?`<a class="btn pri block" href="#agencias/subasta">Ver la subasta de hoy</a>`:"");
 }
 // Eventos del flujo: se escuchan una sola vez en el contenedor (la pantalla se actualiza sin reemplazarse entera).
 function initFlujo(){
@@ -680,26 +667,26 @@ const LEGAL={
 terminos:BORR("Términos para agencias","Lo tiene que revisar un abogado antes de publicarse (LEG-03). Montos y plazos a validar.")+`
 <h2>1. Qué es Yacar</h2><p>Yacar es una plataforma que conecta a particulares que quieren vender su auto con agencias de usados. Yacar no compra ni vende autos y no maneja el dinero de la operación: la compraventa es entre la agencia y el vendedor.</p>
 <h2>2. Alta y verificación</h2><p>Para ofertar, la agencia tiene que darse de alta y ser aprobada. Una persona de Yacar revisa cada alta: CUIT y condición fiscal, el local y su ficha de Google Maps con reseñas, la página web o las redes, los años en el rubro, el responsable de compras y, si corresponde, la inscripción como comerciante habitualista. Hasta que la aprobamos, la agencia no ve la subasta ni las fichas de los autos. Podemos rechazar o suspender una agencia si la información no es correcta.</p>
-<h2>3. Ofertas</h2><p>Cada oferta es un compromiso de compra. Si la agencia gana y el auto está como se declaró, tiene que comprarlo al precio que resulte de la subasta.</p>
-<h2>4. Fee</h2><p>La agencia que gana paga un fee para recibir el contacto del vendedor: 1,5% del precio de compra, con un mínimo de $200.000 por auto. El fee se paga por Mercado Pago y se factura.</p>
-<h2>5. Devolución del fee</h2><ul><li>Se devuelve si el auto tenía algo importante que no estaba declarado y no se llega a un acuerdo.</li><li>Se devuelve si el vendedor se echa atrás.</li><li>No se devuelve si la agencia decide no comprar un auto que está como se declaró.</li></ul>
-<h2>6. Visita y ajustes</h2><p>La visita se hace dentro de las 48 h. Solo se puede proponer un ajuste por algo no declarado, con fotos. Yacar lo revisa y el vendedor puede aceptarlo o no.</p>
-<h2>7. Compras por fuera</h2><p>Los autos que la agencia ve en Yacar se compran por Yacar. Si la agencia compra por fuera un auto que vio en la plataforma dentro de los 90 días, paga el fee y una penalidad.</p>
+<h2>3. Ofertas</h2><p>Cada oferta es un compromiso de compra y no se puede cambiar ni cancelar. Si la agencia gana y el auto está como se declaró, tiene que comprarlo al precio que ofertó.</p>
+<h2>4. Fee</h2><p>Durante el piloto, Yacar no cobra nada. Antes de empezar a cobrar avisamos por mail y WhatsApp con 30 días de anticipación, con el precio y la forma de pago.</p>
+<h2>5. Ofertas independientes</h2><p>Cada agencia oferta por su cuenta. Está prohibido ponerse de acuerdo con otras agencias para ofertar, no ofertar o repartirse autos (Ley 27.442 de Defensa de la Competencia, art. 2, inc. d). Si lo detectamos, damos de baja a las agencias involucradas.</p>
+<h2>6. Visita y ajustes</h2><p>La visita se hace dentro de las 48 h hábiles. Solo se puede proponer un ajuste por algo no declarado, con fotos. Yacar lo revisa y el vendedor puede aceptarlo o no.</p>
+<h2>7. Compras por fuera</h2><p>Los autos que la agencia ve en Yacar se compran por Yacar. Si la agencia compra por fuera un auto que vio en la plataforma dentro de los 90 días, paga una penalidad.</p>
 <h2>8. Transferencia</h2><p>La agencia se compromete a transferir el auto a su nombre o a que el vendedor haga la denuncia de venta el mismo día de la entrega.</p>
 <h2>9. Datos del vendedor</h2><p>La agencia usa los datos del vendedor solo para esa operación y no los comparte.</p>
-<h2>10. Suspensión</h2><p>Con dos avisos (por ejemplo, no comprar un auto ganado sin motivo o ajustes rechazados por no estar justificados), la cuenta se suspende.</p>
+<h2>10. Suspensión</h2><p>Con dos avisos (por ejemplo, no comprar un auto ganado sin motivo o ajustes rechazados por no estar justificados), la cuenta se suspende. Coordinar ofertas con otras agencias es motivo de baja inmediata.</p>
 <h2>11. Cambios</h2><p>Si cambiamos estos términos, avisamos por mail y WhatsApp con 15 días de anticipación.</p>`,
 reglas:BORR("Reglas de la subasta","Reglas en discusión (SUB-01). Ver PROPUESTA_AGENCIAS_Y_SUBASTA.md.")+`
 <h2>Horario</h2><p>Hay una subasta por día. A las 9 h te llega el resumen con los autos del día; la subasta abre a las 10 h y cierra a las 19 h. Entran los autos que aprobamos hasta las 8 h de ese día; los que aprobamos después salen en la subasta del día siguiente.</p>
-<h2>Qué ves</h2><p>La ficha del auto (las 10 fotos, más el motor si el vendedor la sacó, con la patente tapada), la zona y la distancia aproximada, el mínimo del vendedor y la cantidad de ofertas. No ves los montos de las otras agencias. La patente, la dirección y el contacto del vendedor te llegan cuando ganás y pagás el fee.</p>
-<h2>Cómo se oferta</h2><ul><li>Ponés el máximo que pagarías. La oferta más baja permitida es el piso del rango del auto.</li><li>Si ganás, pagás $50.000 más que la segunda oferta, o el mínimo del vendedor si sos la única que lo supera. Nunca más que tu máximo.</li><li>Podés cancelar tu oferta mientras la subasta está abierta.</li><li>Si hay empate, gana la oferta más temprana.</li></ul>
-<h2>Al cierre</h2><ul><li>Si la mejor oferta llega al mínimo del vendedor, el auto se vende sin volver a preguntarle.</li><li>Si queda por debajo, el vendedor tiene 24 h para aceptarla.</li><li>La agencia que gana paga el fee y recibe el contacto del vendedor.</li></ul>
-<h2>La visita</h2><ul><li>Se coordina dentro de las 48 h.</li><li>Si el auto está como se declaró, la compra se hace al precio de la subasta.</li><li>Solo se puede proponer un ajuste por algo no declarado, con fotos. Lo revisamos y el vendedor decide.</li></ul>`,
+<h2>Qué ves</h2><p>Con tu agencia aprobada: la ficha del auto (las 10 fotos, más el motor si el vendedor la sacó, con la patente tapada), el estado, los papeles, la zona y la distancia aproximada, y lo que piden los avisos por autos así. No ves el mínimo del vendedor, ni las ofertas de las otras agencias, ni cuántas hay. Sin cuenta, o con la agencia en revisión, solo ves qué autos hay en la subasta. La patente, la dirección y el contacto del vendedor te llegan cuando ganás.</p>
+<h2>Cómo se oferta</h2><ul><li>Es a sobre cerrado: una sola oferta por auto, que no se puede cambiar ni cancelar.</li><li>Gana la oferta más alta y la agencia paga lo que ofertó.</li><li>Si hay empate, gana la oferta más temprana.</li><li>Cada agencia oferta por su cuenta: ponerse de acuerdo con otras está prohibido por ley y es motivo de baja.</li></ul>
+<h2>Al cierre</h2><ul><li>Si la oferta más alta llega al mínimo del vendedor, el auto se vende sin volver a preguntarle.</li><li>Si queda por debajo, el vendedor tiene 24 h para aceptarla.</li><li>La agencia que gana recibe el contacto del vendedor. Durante el piloto no hay fee.</li><li>No publicamos los montos de las otras ofertas.</li></ul>
+<h2>La visita</h2><ul><li>Se coordina dentro de las 48 h hábiles.</li><li>Si el auto está como se declaró, la compra se hace al precio de la subasta.</li><li>Solo se puede proponer un ajuste por algo no declarado, con fotos. Lo revisamos y el vendedor decide.</li></ul>`,
 privacidad:BORR("Política de privacidad","Texto final con abogado (LEG-04). Evaluar inscripción de la base en la AAIP (Ley 25.326).")+`
 <h2>Qué datos pedimos a las agencias</h2><p>Nombre de la agencia, datos del responsable de compras (nombre, email y celular), CUIT, condición fiscal, dirección y código postal del local, ficha de Google Maps, página web o redes, años en el rubro, zona y preferencias de compra.</p>
-<h2>Para qué los usamos</h2><p>Para verificar la agencia, mostrarle autos de su zona, mandarle avisos, cobrar el fee y facturar.</p>
+<h2>Para qué los usamos</h2><p>Para verificar la agencia, mostrarle autos de su zona, mandarle avisos y, cuando termine el piloto, cobrar y facturar.</p>
 <h2>Qué ve el vendedor</h2><p>El nombre de la agencia que ganó y el contacto del responsable, para coordinar la visita.</p>
-<h2>Datos de los vendedores</h2><p>Antes de ganar, la agencia ve solo la zona del auto. Nombre, teléfono y dirección se comparten recién después de pagar el fee y solo para esa operación.</p>
+<h2>Datos de los vendedores</h2><p>Antes de ganar, la agencia ve solo la zona del auto. Nombre, teléfono y dirección se comparten recién cuando gana la subasta y solo para esa operación.</p>
 <h2>Tus derechos</h2><p>Podés pedir ver, corregir o borrar tus datos escribiéndonos por WhatsApp o mail.</p>`
 };
 
@@ -760,6 +747,7 @@ R.addEventListener("click",e=>{
 /* ---------- reloj ---------- */
 function tick(){
  const el=byId("clock1"); if(!el) return;
+ const P2=window.YacarSubasta; if(P2){ el.textContent=P2.cerrada()?"Cerrada":"Cierra en "+P2.reloj(); return; }   // 19/10: el mismo reloj que el portal
  const now=new Date(), h=now.getHours();
  if(h<10){el.textContent="Abre a las 10 h";return}
  if(h>=19){el.textContent="Cerró · mañana abre a las 10 h";return}
@@ -770,11 +758,11 @@ function tick(){
 
 /* ---------- notas del prototipo ---------- */
 const NOTAS={
- subasta:{a:["Portal de subasta (18/10): Subasta de hoy, página de cada auto y Mis ofertas, solo para agencias aprobadas. Estructura inspirada en las subastas en vivo de Motordil.","Subasta ciega con oferta máxima: la agencia ve cuántas ofertas hay, si va ganando y si se llegó al mínimo, nunca los montos de las demás. Las últimas pujas se muestran sin montos.","Si gana, paga $50.000 más que la segunda (o el mínimo del vendedor), nunca más que su máximo. Si no llega al mínimo, el vendedor tiene 24 h para aceptar (D-47).","El fee (1,5%, mínimo $200 mil) se paga recién al ganar, con Mercado Pago (simulado). Al pagarlo se libera el contacto y la patente.","Los avisos (nueva subasta, te superaron, queda 1 hora, ganaste) se muestran como el WhatsApp que mandaría el bot.","Fuera del horario de 10 a 19 h, el prototipo simula que la subasta está abierta y cierra en 2 h 15 min."],v:["¿La subasta ciega con 'vas ganando / te superaron' alcanza, o quieren ver montos?","¿El Yacar Score les sirve para elegir qué mirar?","¿Qué les falta en la página del auto para ofertar sin ir a verlo?","¿Los avisos por WhatsApp son demasiados o pocos?"]},
- inicio:{a:["Landing pública (11/10): la ve cualquiera, pero sin subastas, fichas ni mínimos de vendedores. En su lugar, operaciones cerradas de ejemplo.","La subasta de hoy y la ficha del auto aparecen solo con la sesión de una agencia aprobada.","Una subasta por día: resumen por WhatsApp a las 9 h, abre a las 10 h y cierra a las 19 h (11/10).","Fee: 1,5% del precio de compra con mínimo de $200 mil (11/10, puede cambiar).","Ficha: las mismas 14 fotos que se le piden al vendedor, en el mismo orden; patente tapada.","Zona del auto como área + distancia en franjas de 5 km; nunca un punto.","La barra de arriba queda fija al bajar; el logo vuelve al inicio.","16/10 (D-44): debajo de la ficha, de ejemplo, la ficha para la transferencia que le llega a la agencia que gana: quién firma y dónde, certificado de dominio pedido por el vendedor, título, prenda, verificación, grabado, deuda y multas del día con constancias. Sin DNI ni domicilio del vendedor (D-38)."],v:["¿La ficha para la transferencia tiene lo que necesitan para la firma? ¿Falta algo?","¿Las operaciones cerradas convencen sin ver la subasta?","¿1,5% con mínimo de $200 mil les parece justo?","¿El resumen de las 9 h les alcanza o quieren avisos durante el día?","¿Se entiende la subasta ciega con proxy en una línea?","¿Les interesa Yacar Gestión? ¿Cuánto pagarían?"]},
- alta:{a:["Paso 1, lo mínimo (11/10, noche): CUIT, tu nombre, email, contraseña y WhatsApp. Con el CUIT nos fijamos si la agencia ya está en Yacar.","Si el CUIT es nuevo: «¡Con ese CUIT no hay ninguna agencia en Yacar todavía!» y traemos de ARCA la razón social y la condición fiscal (simulado: no hace falta preguntarla). Si ya existe, se ofrece ingresar o pedir acceso a quien la sumó.","Paso 2: lo necesario para aprobarla: nombre de la agencia, dirección y código postal del local, Google Maps, web o Instagram, años en el rubro y si son habitualistas.","Paso 3: zona de compra con el radio desde el local. El mapa se acerca con el radio chico y se aleja con el grande; las divisiones son aproximadas.","Paso 4: resumen diario por WhatsApp a las 9 h, recordatorio a las 18 h y términos. Recién al enviar: «¡Listo!»."],v:["¿Consultamos ARCA de verdad (padrón, requiere certificado) o alcanza con validar el CUIT y revisarlo a mano?","¿Una agencia puede tener varios usuarios con el mismo CUIT?","¿El mapa esquemático se entiende o hace falta un mapa real?"]},
- estado:{a:["Estados: Sin revisión → En revisión (revisión a mano, hasta 48 h hábiles) → Aprobada.","Para aprobar: CUIT, condición fiscal, dirección, ficha de Google Maps, web o Instagram, años en el rubro y una llamada.","Hasta que está aprobada, la agencia no ve la subasta ni las fichas."],v:["¿Qué umbral de reseñas y antigüedad pedimos (AGE-03)?","¿La charla de verificación es por teléfono o en persona?"]},
- ingresar:{a:["Ingreso con email y contraseña (11/10): más formal que un código por WhatsApp.","Sin ingresar se ven la landing (sin subastas), el alta y los textos legales.","Prototipo: cualquier email y contraseña entran como una agencia ya aprobada.","Al terminar el alta, la agencia queda con sesión iniciada y En revisión: no ve la subasta hasta que la aprobamos."],v:["¿Confirmamos el email con un link antes de dejarla seguir?","¿Les mandamos a las agencias que contactamos un link de invitación?"]},
+ subasta:{a:["Portal de subasta (18/10, Maxi): Subasta de hoy, página de cada auto y Mis ofertas. Estructura inspirada en las subastas en vivo de Motordil.","18/10 noche (Gonzalo): a sobre cerrado. Una oferta por auto, sin cambios ni cancelación; gana la más alta y paga lo que ofertó. Nadie ve las ofertas, cuántas hay ni si se llegó al mínimo.","El mínimo del vendedor no se muestra. En su lugar, el sondeo de mercado con el que entró el auto (lo que piden los avisos y lo que suelen pagar las agencias) y el margen aproximado con la oferta de la agencia y su precio de publicación.","Si la oferta más alta no llega al mínimo, el vendedor tiene 24 h para aceptarla (D-47).","3 niveles: sin cuenta, solo qué autos hay (modelo y año, con un dibujo); en revisión, la lista con versión, km y distancia, sin fotos; aprobada, todo.","Piloto sin fee: al ganar se pasa el contacto del vendedor.","Fuera del horario de 10 a 19 h, el prototipo simula que la subasta está abierta y cierra en 2 h 15 min."],v:["¿Ofertan sin ver el mínimo? ¿Les sirve el sondeo de mercado para decidir?","¿El Yacar Score les sirve para elegir qué mirar?","¿Qué les falta en la página del auto para ofertar sin ir a verlo?","¿Los avisos por WhatsApp son demasiados o pocos?"]},
+ inicio:{a:["Landing pública (11/10): la ve cualquiera, pero sin subastas, fichas ni mínimos de vendedores. En su lugar, operaciones cerradas de ejemplo.","La subasta completa aparece solo con la sesión de una agencia aprobada.","Una subasta por día: resumen por WhatsApp a las 9 h, abre a las 10 h y cierra a las 19 h (11/10).","Operaciones cerradas sin cantidad de ofertas ni barrio de la agencia que compró (19/10, por D-53: no se publica nada de las otras agencias).","Fee: gratis durante el piloto (18/10). Después, a definir entre los socios (COM-01, D-31).","Zona del auto como área + distancia en franjas de 5 km; nunca un punto.","La barra de arriba queda fija al bajar; el logo vuelve al inicio.","La ficha para la transferencia (D-44) está en el portal: aparece en la página del auto cuando la agencia gana (19/10)."],v:["¿La ficha para la transferencia tiene lo que necesitan para la firma? ¿Falta algo?","¿Las operaciones cerradas convencen sin ver la subasta?","¿Cuánto pagarían por auto comprado después del piloto?","¿El resumen de las 9 h les alcanza o quieren avisos durante el día?","¿Se entiende la subasta a sobre cerrado en una línea?","¿Les interesa Yacar Gestión? ¿Cuánto pagarían?"]},
+ alta:{a:["Paso 1, lo mínimo (11/10, noche): CUIT, tu nombre, email, contraseña y WhatsApp. Con el CUIT nos fijamos si la agencia ya está en Yacar.","Si el CUIT es nuevo: «¡Con ese CUIT no hay ninguna agencia en Yacar todavía!» y traemos de ARCA la razón social y la condición fiscal (simulado: no hace falta preguntarla). Si ya existe, se ofrece ingresar o pedir acceso a quien la sumó.","Paso 2: lo necesario para aprobarla: nombre de la agencia, dirección y código postal del local, Google Maps, web o Instagram, años en el rubro y si son habitualistas.","Paso 3: zona de compra con el radio desde el local. El mapa se acerca con el radio chico y se aleja con el grande; límites oficiales de barrios y partidos (18/10 noche).","Paso 4: resumen diario por WhatsApp a las 9 h, recordatorio a las 18 h y términos. Recién al enviar: «¡Listo!»."],v:["¿Consultamos ARCA de verdad (padrón, requiere certificado) o alcanza con validar el CUIT y revisarlo a mano?","¿Una agencia puede tener varios usuarios con el mismo CUIT?","¿El mapa con los límites de barrios y partidos alcanza o quieren ver calles?"]},
+ estado:{a:["Estados: Sin revisión → En revisión (revisión a mano, hasta 48 h hábiles) → Aprobada.","Para aprobar: CUIT, condición fiscal, dirección, ficha de Google Maps, web o Instagram, años en el rubro y una llamada.","Hasta que está aprobada, la agencia ve solo la lista de autos de la subasta (sin fotos, sin barrio y sin ficha)."],v:["¿Qué umbral de reseñas y antigüedad pedimos (AGE-03)?","¿La charla de verificación es por teléfono o en persona?"]},
+ ingresar:{a:["Ingreso con email y contraseña (11/10): más formal que un código por WhatsApp.","Sin ingresar se ven la landing, el alta, los textos legales y la subasta en su versión mínima: qué autos hay (modelo y año, con un dibujo) (D-54).","Prototipo: cualquier email y contraseña entran como una agencia ya aprobada.","Al terminar el alta, la agencia queda con sesión iniciada y En revisión: no ve la subasta hasta que la aprobamos."],v:["¿Confirmamos el email con un link antes de dejarla seguir?","¿Les mandamos a las agencias que contactamos un link de invitación?"]},
  legal:{a:["Borradores para mostrar la idea; no son textos finales.","Anti-bypass: fee + penalidad si compra por fuera dentro de 90 días (a definir)."],v:["Revisión del abogado (LEG-03, LEG-04).","Monto de la penalidad por bypass."]}
 };
 function notasPanel(){
@@ -832,10 +820,11 @@ window.addEventListener("hashchange",()=>{
  if(ahora) route(); else if(antes) window.scrollTo(0,0);
 });
 // 18/10: lo que usa el portal de subasta (subasta.js, se carga después)
-window.YacarAg={R,S,$,$$,byId,go,route,esc,fmt,fmtM,feeOf,FEE,ZBY,DEMO_BASE,dist,banda,aprobada,FOTOS,CUB,repintar};
+window.YacarAg={R,S,$,$$,byId,go,route,esc,fmt,fmtM,feeOf,FEE,ZBY,DEMO_BASE,dist,banda,aprobada,FOTOS,CUB,repintar,carIcon};
 ficha(); vlist(byId("vlistLanding")); initFlujo();
-byId("cPrecio").addEventListener("input",calc);
-calc(); tick(); setInterval(tick,1000);
+R.querySelectorAll(".pimg").forEach(f=>{ if(/data:/.test(getComputedStyle(f).backgroundImage)) f.classList.add("confoto"); });   // 19/10: con foto, sin dibujo
+byId("cPrecio")?.addEventListener("input",calc);
+if(byId("cPrecio")) calc(); tick(); setInterval(tick,1000);
 if(modo()) route(); else notasPanel();
 })();
 

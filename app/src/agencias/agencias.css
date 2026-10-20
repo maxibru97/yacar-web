@@ -157,12 +157,13 @@ input[type=password]{border:1.5px solid var(--field);border-radius:var(--r);padd
 .mapwrap{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
 .map{width:100%;height:auto;display:block;border-radius:10px;background:#F1EEE4;touch-action:manipulation}
 .map{aspect-ratio:106/102;overflow:hidden}
-.map .cell{fill:transparent;stroke:#CFC7B2;stroke-width:.8px;vector-effect:non-scaling-stroke;stroke-linejoin:round;transition:fill .35s ease}
+.map .cell{fill:#F1EEE4;stroke:#CFC7B2;stroke-width:.8px;vector-effect:non-scaling-stroke;stroke-linejoin:round;transition:fill .35s ease}
 .map .cell.b{stroke:#D9D2C0}
-.map .cell.on{fill:rgba(184,224,74,.55)}
+.map .cell.on{fill:#D2E68F}
+.map .ctx{fill:#E9E5D8;stroke:#D6CFBC;stroke-width:.6px;vector-effect:non-scaling-stroke;stroke-linejoin:round}
 .map.tocable .cell{cursor:pointer}
-.map.tocable .cell:hover{fill:rgba(184,224,74,.28)}
-.map.tocable .cell.on:hover{fill:rgba(184,224,74,.72)}
+.map.tocable .cell:hover{fill:#E1EAB9}
+.map.tocable .cell.on:hover{fill:#C8E475}
 .map .cell:focus{outline:none;stroke:var(--brand);stroke-width:2px}
 .map .limcaba{fill:none;stroke:#A8A08A;stroke-width:1.4px;vector-effect:non-scaling-stroke}
 .map .radio{fill:none;stroke:#123F2C;stroke-width:1.6px;stroke-dasharray:6 4;vector-effect:non-scaling-stroke}

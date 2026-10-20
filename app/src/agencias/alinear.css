@@ -1,0 +1,125 @@
+/* ================= 19/10/2026 (Gonzalo): el lado agencias con el mismo formato que el lado vendedor =================
+   Mismos tamaños de títulos y secciones, botones redondos, tarjetas de 24 px, hero con foto, pasos con foto y dolor,
+   banda verde para la confianza, preguntas con el + lima y cierre centrado. Va después de agencias.css y subasta.css. */
+:host{--r-card:24px}
+
+/* barra: un solo renglón, como la del vendedor */
+.site .wrap{min-height:64px;padding-block:8px;flex-wrap:nowrap}
+.site nav{flex-wrap:nowrap;gap:6px 26px;white-space:nowrap}
+.site nav .vend{border:0;padding:8px 0;color:var(--muted)}
+.site nav .vend:hover{color:var(--accent-2)}
+.site nav .ingresar{padding:10px 18px;font-weight:600}
+.logo{font-size:25px}
+@media (max-width:1180px){.site nav{gap:6px 18px;font-size:15px}}
+
+/* botones */
+.btn{border-radius:999px;min-height:48px;padding:14px 24px}
+.btn.pri{font-size:17px}
+.navrow .btn,.noteacts .btn{min-height:0}
+
+/* hero: misma grilla, tamaños y foto debajo del verde */
+.heroband{position:relative;background:linear-gradient(180deg,rgba(13,46,32,.88) 0%,rgba(18,63,44,.82) 45%,rgba(12,42,29,.95) 100%),url(/*@foto:y1_34dd.jpg*/"") center 45%/cover no-repeat var(--brand)}
+.heroband .wrap{padding-block:72px 80px;gap:40px 56px}
+.herocopy{gap:18px;padding-top:12px}
+.hero-pill{margin:0;align-self:flex-start;font-size:14px;font-weight:600;color:var(--cta);background:rgba(184,224,74,.12);border:1px solid rgba(184,224,74,.35);border-radius:999px;padding:6px 14px}
+.herocopy h1{font-size:clamp(40px,6vw,72px);line-height:1.02;letter-spacing:-.03em;max-width:13ch}
+.herocopy h1 span{display:block;color:var(--cta)}
+.herocopy p.lead{font-size:19px;color:#E3ECE5;max-width:44ch}
+.herocard .card{border-radius:var(--r-card)}
+@media (max-width:860px){
+ .heroband .wrap{padding-block:28px 44px;gap:28px}
+ .herocopy{gap:12px;padding-top:0}
+ .hero-pill{font-size:13px;padding:4px 12px}
+ .herocopy h1{font-size:38px;max-width:none}
+ .herocopy p.lead{font-size:16px}
+}
+
+/* secciones */
+.sec{padding-block:88px}
+.sec.alt{background:var(--sunk);border-block:0}
+.sec h2{font-size:clamp(32px,4.4vw,52px);line-height:1.05;letter-spacing:-.03em;color:var(--ink);max-width:22ch}
+.sec h2 span{color:var(--accent-2)}
+.sec .intro{font-size:19px;margin-top:14px;max-width:720px}
+.grid3,.grid4{margin-top:40px;gap:18px}
+@media (max-width:860px){.sec{padding-block:56px}}
+
+/* tarjetas */
+.card{border-radius:var(--r-card)}
+.rule,.who,.tier{padding:26px 24px}
+.rule h3,.who h3,.tier h3{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.rule p{font-size:16px}
+.who.us{border:2px solid var(--brand)}
+.tier.base{border:2px solid var(--brand)}
+.tier .from{color:var(--accent-2)}
+.mapwrap,.callout{border-radius:var(--r-card)}
+.op .opth{border-radius:16px}
+
+/* cómo funciona: pasos con foto y el dolor que sacan (igual al vendedor) */
+.pasos-img{list-style:none;margin:40px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+.pasos-img li{display:flex;flex-direction:column;gap:10px}
+.pimg{position:relative;margin:0 0 6px;aspect-ratio:4/3;border-radius:var(--r-card);overflow:hidden;background:var(--accent-soft) center/cover no-repeat;display:grid;place-items:center;color:var(--brand)}
+.pimg .pil{width:46%;height:auto}
+.pimg.confoto .pil{display:none}
+.pimg .n{position:absolute;left:14px;top:14px;width:40px;height:40px;border-radius:50%;background:var(--cta);color:var(--cta-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:21px;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+.pimg.a1{background-image:url(/*@foto?:ag_paso1.jpg*/"")}
+.pimg.a2{background-image:url(/*@foto?:ag_paso2.jpg*/"")}
+.pimg.a3{background-image:url(/*@foto?:ag_paso3.jpg*/"")}
+.dolor{margin:0;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--muted)}
+.dolor svg{flex:none;width:22px;height:22px;padding:5px;border-radius:50%;background:var(--bad-soft);color:var(--bad)}
+.pasos-img h3{font-size:24px;font-weight:600;letter-spacing:-.02em}
+.pasos-img p:not(.dolor){margin:0;color:var(--muted);font-size:16px}
+@media (max-width:860px){.pasos-img{grid-template-columns:1fr;gap:34px}.pimg{aspect-ratio:16/10}}
+
+/* banda verde de confianza (como "Vendé tranquilo") */
+.tranquilo{background:var(--brand);color:#fff}
+.tranquilo .wrap{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:40px 72px;align-items:start}
+.tranquilo h2{color:#fff}
+.tq-plata{margin:22px 0 0;font-family:var(--f-display);font-size:clamp(22px,2.4vw,28px);line-height:1.2;font-weight:600;color:#DCE7DD;max-width:16em}
+.tq-plata span{color:var(--cta)}
+.tq-badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.tq-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.tq-lista li{display:flex;gap:18px;align-items:center;padding:16px 0;border-top:1px solid rgba(255,255,255,.14)}
+.tq-lista li:first-child{border-top:0;padding-top:0}
+.tq-lista .ic{flex:none;width:36px;height:36px;border-radius:50%;background:var(--cta);display:grid;place-items:center}
+.tq-lista .ic svg circle{fill:var(--cta-ink)}
+.tq-lista b{font-family:var(--f-display);font-size:19px;font-weight:600;color:#fff}
+.tq-lista small{color:#C4D3C6;font-size:15px;margin-top:2px}
+@media (max-width:860px){.tranquilo .wrap{grid-template-columns:1fr}}
+
+/* preguntas: mismas tarjetas y el + lima */
+.faq{margin-top:32px;gap:10px}
+.faq details{border-radius:18px;padding:0 22px}
+.faq summary{font-size:18px;padding:18px 0;align-items:center;min-height:60px}
+.faq summary::after{content:"+";flex:none;width:32px;height:32px;border-radius:50%;background:var(--cta);color:var(--cta-ink);display:grid;place-items:center;font-size:22px;font-weight:600;line-height:1;transition:transform .3s ease}
+.faq details[open] summary::after{content:"+";transform:rotate(45deg)}
+.faq details p{padding-bottom:18px}
+
+/* cierre centrado, como el del vendedor */
+.closing{padding-block:88px}
+.closing .wrap{flex-direction:column;align-items:center;text-align:center;gap:24px}
+.closing h2{font-size:clamp(34px,5vw,56px);line-height:1.04;letter-spacing:-.03em;color:#fff}
+.closing h2 span{display:block;color:var(--cta)}
+.closing .herobtns{justify-content:center}
+.closing .lema{margin:0;font-size:16px;color:#C4D3C6}
+
+/* pie: el mismo del vendedor (claro) */
+.foot{background:var(--sunk);color:var(--muted);border-top:1px solid var(--line)}
+.foot .wrap{padding-block:40px 56px}
+.foot a,.foot .logo{color:var(--ink)}
+.foot a:hover{color:var(--accent-2);text-decoration:none}
+@media (max-width:600px){
+ .site .wrap{gap:8px}
+ .logo{font-size:21px;gap:7px}
+ .logo .para{font-size:10px;padding:2px 7px}
+ .site nav{gap:10px}
+ .site nav .ingresar{padding:8px 14px}
+ .thumb{width:60px;height:44px}
+ .lot{gap:10px;padding:12px 14px}
+ .lot .p b{font-size:17px}
+ .btn{padding:12px 20px}
+}
+@media (max-width:430px){.site .logo .para{display:none}}
+/* alta, ingreso y Mi agencia: títulos y barra de avance como en el flujo del vendedor */
+.flujo h2{color:var(--ink);letter-spacing:-.02em}
+.flujo .card{border-radius:var(--r-card)}
+.prog{background:var(--line)}

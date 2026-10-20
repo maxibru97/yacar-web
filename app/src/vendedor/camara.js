@@ -10,10 +10,23 @@
 const Camara = (() => {
   let ov = null, stream = null, act = null, ignorarPop = false, ses = null, ocupado = false;
   const AUTO = {esq_di:'izq', esq_td:'izq', esq_dd:'der', esq_ti:'der'};   // de qué lado queda el frente (o la cola) en la foto
+  // 19/10/2026 (Gonzalo): siluetas en perspectiva 3/4 según la carrocería (hatch, sedán, SUV, pickup), adelante y atrás.
+  // Salen de un modelo 3D simple proyectado con una cámara a 1,65 m (app/siluetas/generar.py); vienen con la cara a la izquierda y se espejan.
+  const SIL = /*@json:siluetas.json*/null;
+  const SUV = /(^|\s)(Q3|Q5|Q7|X1|X3|X5|EQUINOX|TRACKER|TRAILBLAZER|AIRCROSS|CACTUS|JOURNEY|PULSE|BRONCO|ECOSPORT|KUGA|TERRITORY|CR-V|HR-V|CRETA|SANTA FE|TUCSON|CHEROKEE|COMMANDER|COMPASS|RENEGADE|WRANGLER|SELTOS|SPORTAGE|GLA|GLC|OUTLANDER|KICKS|MURANO|X-TRAIL|2008|3008|5008|CAPTUR|DUSTER|KOLEOS|VITARA|JIMNY|C-HR|COROLLA CROSS|SW4|LAND CRUISER|RAV4|YARIS CROSS|NIVUS|T-CROSS|TAOS|TIGUAN|XC40|XC60)($|\s)/;
+  function carroceria(){
+    try {
+      const mo = String(S.modelo||'').toUpperCase();
+      if ((typeof esPickup==='function' && esPickup(S.vid)) || /OROCH|HILUX(?! SW4)|RANGER|AMAROK|S10|FRONTIER|L200|SAVEIRO|STRADA|TORO|MONTANA|MAVERICK|ALASKAN|TITANO|D-MAX|BT-50|TUNDRA|RAM/.test(mo)) return 'pickup';
+      if (SUV.test(mo)) return 'suv';
+      const v = typeof vActual==='function' ? vActual() : null, n = v ? String(v[1]).toUpperCase() : '';
+      return /(^|\s)4P(\s|$)|SEDAN|SEDÁN/.test(n) ? 'sedan' : 'hatch';
+    } catch(e){ return 'hatch'; }
+  }
   const ETIQ = {cedula_f:'Cédula verde (frente)', cedula_d:'Cédula verde (dorso)', chasis:'Número de chasis', dni_f:'DNI (frente)', dni_d:'DNI (dorso)',
     selfie:'Tu selfie', f12:'Formulario 12', libreta:'Libreta de service'};
   function guia(g, k){
-    if (g==='fotos' && AUTO[k]) return {tipo:'auto', cara:AUTO[k], horizontal:true, tip:'Que el auto entero entre en la silueta'};
+    if (g==='fotos' && AUTO[k]) return {tipo:'auto', cara:AUTO[k], vista:k.startsWith('esq_d') ? 'frente' : 'cola', horizontal:true, tip:'Que el auto entero entre en la silueta'};
     if (g==='fotos' && k.startsWith('cub_')) return {tipo:'rueda', tip:'Que la rueda llene el círculo y se vea el dibujo'};
     if (g==='fotos' && k==='tablero') return {tipo:'tablero', horizontal:true, tip:'Que se lean los kilómetros y las luces'};
     if (g==='fotos') return {tipo:'marco', horizontal:k!=='llaves', tip:(CONSEJOS[k]||[''])[(k==='asientos_del'||k==='asientos_tras') ? 1 : 0]};
@@ -30,18 +43,25 @@ const Camara = (() => {
   const LINEA = 'fill="none" stroke="#fff" stroke-width="3" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"';
   const mascara = (W, H, hueco) => `<path d="M0 0H${W}V${H}H0Z ${hueco}" fill="rgba(0,0,0,.42)" fill-rule="evenodd"/><path d="${hueco}" ${LINEA}/>`;
   const rrect = (x, y, w, h, r) => `M${x+r} ${y}H${x+w-r}Q${x+w} ${y} ${x+w} ${y+r}V${y+h-r}Q${x+w} ${y+h} ${x+w-r} ${y+h}H${x+r}Q${x} ${y+h} ${x} ${y+h-r}V${y+r}Q${x} ${y} ${x+r} ${y}Z`;
+  // 19/10: con el celular vertical, las fotos horizontales se sacan igual: se recorta una franja 4:3 del centro (no hace falta girar
+  // ni que la rotación esté desbloqueada). Si gira la pantalla, se usa el cuadro entero.
+  const enFranja = (gd, W, H) => !!gd.horizontal && H > W*1.05;
+  function recorte(gd, vw, vh){ if (!enFranja(gd, vw, vh)) return null; const h = Math.round(vw*0.75); return {x:0, y:Math.round((vh-h)/2), w:vw, h}; }
   function dibujar(gd, W, H){
+    if (enFranja(gd, W, H)){ const h = Math.round(W*0.75), y = Math.round((H-h)/2);
+      return `<path d="M0 0H${W}V${H}H0Z M0 ${y}V${y+h}H${W}V${y}Z" fill="rgba(0,0,0,.55)" fill-rule="evenodd"/><g transform="translate(0 ${y})">${dibujarEn(gd, W, h)}</g>`; }
+    return dibujarEn(gd, W, H);
+  }
+  function dibujarEn(gd, W, H){
     const cx = W/2, cy = H/2, m = Math.min(W, H);
-    if (gd.tipo==='auto'){   // auto a 45°, dibujado en 1000 × 500 con la cara (frente o cola) a la izquierda; se espeja para el otro lado
-      const s = Math.min(W*0.88/900, H*0.74/340), tx = cx - 500*s, ty = cy - 310*s;
+    if (gd.tipo==='auto'){   // silueta 3/4 en 1000 × 500 con la cara (frente o cola) a la izquierda; se espeja para el otro lado
+      const d = (SIL && (SIL[carroceria()+'_'+gd.vista] || SIL['hatch_'+gd.vista])) || null;
+      if (!d) return '';
+      const s = Math.min(W*0.98/1000, H*0.96/500), tx = cx - 500*s, ty = cy - 250*s;
       const espejo = gd.cara==='der' ? ' transform="matrix(-1 0 0 1 1000 0)"' : '';
-      return `<g transform="translate(${tx} ${ty}) scale(${s})" class="cam-auto"><g${espejo}>
-        <path d="M90 410L85 322Q88 296 112 290L250 230L362 150Q372 144 386 144L770 148Q790 150 800 160L880 244L908 258Q920 264 920 280L920 372Q920 386 906 388L842 392A44 44 0 0 0 756 394L502 408A60 60 0 0 0 384 412L350 422L100 420Q90 418 90 410Z" ${LINEA}/>
-        <path d="M112 290L332 300L350 422M332 300L500 238M250 230L500 238M500 238L590 152" ${LINEA}/>
-        <path d="M522 246L602 166L774 166L850 250Z" ${LINEA}/><path d="M690 166V248" ${LINEA}/>
-        <path d="M100 318L170 322L168 340L98 336ZM250 326L318 330L320 348L252 344ZM180 362L282 366" ${LINEA}/>
-        <circle cx="443" cy="412" r="52" ${LINEA}/><circle cx="799" cy="392" r="40" ${LINEA}/>
-        <path d="M40 474H960" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2" stroke-dasharray="10 9" vector-effect="non-scaling-stroke"/></g></g>`;
+      const grosor = w => LINEA.replace('stroke-width="3"', `stroke-width="${w}"`);
+      return `<g transform="translate(${tx} ${ty}) scale(${s})" class="cam-auto"><g${espejo}><path d="${d.c}" ${grosor(3.2)}/>
+        ${d.l.map(p => `<path d="${p}" ${grosor(1.7)}/>`).join('')}${(d.m || []).map(p => `<path d="${p}" ${grosor(1.3)} stroke-opacity=".7"/>`).join('')}</g></g>`;
     }
     if (gd.tipo==='rueda'){ const r = m*0.37; return `<circle cx="${cx}" cy="${cy}" r="${r}" ${LINEA}/><circle cx="${cx}" cy="${cy}" r="${r*0.6}" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2" stroke-dasharray="8 7" vector-effect="non-scaling-stroke"/>`; }
     if (gd.tipo==='tablero'){ const w = W*0.8, h = Math.min(H*0.56, w*0.42), x = cx-w/2, y = cy-h/2, r = h*0.34;
@@ -76,7 +96,7 @@ const Camara = (() => {
     ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Cámara: ' + titulo(g, k));
     ov.innerHTML = `${ses ? '<div class="cam-barra" aria-hidden="true"><i></i></div>' : ''}<div class="cam-top"><div class="cam-txt">${ses ? '<small class="cam-prog"></small>' : ''}<b class="cam-tit">${esc(titulo(g, k))}</b><span class="cam-tip">${esc(gd.tip)}</span></div>${ses ? '<div class="cam-mapa" aria-hidden="true"></div>' : ''}<button type="button" class="cam-x" aria-label="${ses ? 'Pausar las fotos' : 'Cerrar la cámara'}">✕</button></div>
       <div class="cam-stage"><div class="cam-box"><video playsinline muted autoplay></video><svg class="cam-guia" aria-hidden="true"></svg><div class="cam-flash"></div></div>
-        <p class="cam-girar" hidden>Girá el celular: esta foto va en horizontal</p><div class="cam-msg" role="status">Abriendo la cámara…</div>
+        <p class="cam-girar" hidden>Podés girar el celular para que entre más</p><div class="cam-msg" role="status">Abriendo la cámara…</div>
         <div class="cam-ok" hidden role="status">✓ Bien</div><div class="cam-panel" hidden role="dialog"></div></div>
       <div class="cam-bot">${ses ? '<button type="button" class="cam-alt cam-pausa">Pausar</button>' : `<label class="cam-alt" for="f_${k}">${galeria(g) ? 'Cámara del celular o galería' : 'Usar la cámara del celular'}</label>`}
         <button type="button" class="cam-disparo" aria-label="Sacar la foto" disabled></button>${ses ? '<button type="button" class="cam-alt cam-saltar">Saltear</button>' : '<span class="cam-esp"></span>'}</div>`;
@@ -93,6 +113,7 @@ const Camara = (() => {
       .then(st => {
         if (!ov){ st.getTracks().forEach(t => t.stop()); return; }
         stream = st; video.srcObject = st;
+        video.addEventListener('resize', acomodar);   // 19/10: al girar el celular el video cambia de tamaño: se vuelve a acomodar (antes se deformaba)
         video.addEventListener('loadedmetadata', () => { acomodar(); ov.querySelector('.cam-msg').hidden = true; ov.querySelector('.cam-disparo').disabled = !ov.querySelector('.cam-panel').hidden; ov.querySelector('.cam-disparo').focus(); }, {once:true});
       })
       .catch(err => {
@@ -112,12 +133,29 @@ const Camara = (() => {
     box.style.width = Math.floor(w) + 'px'; box.style.height = Math.floor(h) + 'px';
     const W = 1000, H = Math.round(1000/ar), svg = ov.querySelector('.cam-guia');
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = dibujar(act.gd, W, H);
-    ov.querySelector('.cam-girar').hidden = !(act.gd.horizontal && vh > vw);
+    const gi = ov.querySelector('.cam-girar');
+    gi.hidden = !enFranja(act.gd, vw, vh);
+    gi.textContent = bloqueado ? 'La pantalla no gira: desbloqueá la rotación o sacala así, en vertical' : 'Podés girar el celular para que entre más';
+    gi.classList.toggle('fuerte', bloqueado);
+  }
+  // 19/10: si el celular está acostado pero la pantalla sigue vertical, la rotación está bloqueada (Android avisa la orientación sin permiso;
+  // en iPhone no hay dato sin pedir permiso, y ahí queda el aviso suave: igual se puede sacar en vertical con la franja).
+  let bloqueado = false, tBloq = 0;
+  window.addEventListener('deviceorientation', ev => {
+    if (!ov || ev.gamma == null) return;
+    const acostado = Math.abs(ev.gamma) > 60 && Math.abs(ev.beta) < 35, vertical = window.innerHeight > window.innerWidth;
+    const b = acostado && vertical;
+    if (b !== bloqueado){ clearTimeout(tBloq); tBloq = setTimeout(() => { bloqueado = b; acomodar(); }, b ? 900 : 0); }
+  });
+  function capturar(video){   // el cuadro del video, o la franja 4:3 si la foto es horizontal y el celular está vertical
+    const vw = video.videoWidth, vh = video.videoHeight, r = recorte(act.gd, vw, vh), c = document.createElement('canvas');
+    if (r){ c.width = r.w; c.height = r.h; c.getContext('2d').drawImage(video, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h); }
+    else { c.width = vw; c.height = vh; c.getContext('2d').drawImage(video, 0, 0, vw, vh); }
+    return c;
   }
   function disparar(){
     if (!ov || !stream) return;
-    const video = ov.querySelector('video'), c = document.createElement('canvas');
-    c.width = video.videoWidth; c.height = video.videoHeight; c.getContext('2d').drawImage(video, 0, 0, c.width, c.height);
+    const video = ov.querySelector('video'), c = capturar(video);
     const {g, k} = act; ov.querySelector('.cam-flash').classList.add('on'); ov.querySelector('.cam-disparo').disabled = true;
     c.toBlob(b => {
       cerrar();
@@ -150,8 +188,7 @@ const Camara = (() => {
   async function dispararSes(){
     if (!ov || !stream || ocupado) return;
     ocupado = true;
-    const video = ov.querySelector('video'), c = document.createElement('canvas'), {g, k} = act;
-    c.width = video.videoWidth; c.height = video.videoHeight; c.getContext('2d').drawImage(video, 0, 0, c.width, c.height);
+    const video = ov.querySelector('video'), {g, k} = act, c = capturar(video);
     const fl = ov.querySelector('.cam-flash'); fl.classList.add('on'); setTimeout(() => fl.classList.remove('on'), 160);
     ov.querySelector('.cam-disparo').disabled = true;
     const b = await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.92));

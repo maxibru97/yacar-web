@@ -346,7 +346,7 @@ async function analizarFoto(file, vivo){
     let m = 0, m2 = 0, n = 0;
     for (let yy=1; yy<h-1; yy++) for (let xx=1; xx<w-1; xx++){ const i=yy*w+xx, l = g[i-1]+g[i+1]+g[i-w]+g[i+w]-4*g[i]; m += l; m2 += l*l; n++; }
     const nitidez = n ? m2/n - (m/n)**2 : 0;
-    if (Math.min(img.width, img.height) < 600) avisos.push('Tiene poca resolución: sacala con la cámara del celular, sin achicarla');
+    if (Math.min(img.width, img.height) < (vivo ? 480 : 600)) avisos.push('Tiene poca resolución: sacala con la cámara del celular, sin achicarla');
     if (brillo < 45) avisos.push('Salió muy oscura: sacala con más luz');
     else if (brillo > 230) avisos.push('Salió muy clara: evitá el sol de frente');
     if (nitidez < 250) avisos.push('Puede haber salido movida o desenfocada');
@@ -500,6 +500,13 @@ async function buscarPat(){   // busca la patente y lleva el resultado a nuestro
   const que = [tituloCase(m.marca), tituloCase(m.modelo), m.anio].filter(Boolean).join(' ');
   const falta = m.nivel==='anio' ? 'Elegí la versión.' : m.nivel==='modelo' ? 'Elegí el año y la versión.' : 'Elegí el modelo, el año y la versión.';
   aManual(m.nivel==='nada' ? `No encontramos los datos de la patente ${p}. Elegí tu auto.` : `Encontramos un ${que}. ${falta}`, m.nivel==='nada' ? {} : pre);
+}
+// 19/10 (Gonzalo): al final del inicio, otra vez la patente (como Motorway). Lleva arriba, al cotizador, y busca.
+function cierreCotizar(){
+  const inp = $('#cierrePat'), v = (inp ? inp.value : '').toUpperCase(), e = $('#cierreErr');
+  if (!patOk(v)){ if (e){ e.textContent = 'Revisá la patente: tiene que ser como ABC 123 o AB 123 CD.'; e.classList.add('err'); } if (inp) inp.focus(); return; }
+  Object.assign(S, {paso:'datos', patEstado:'', patente:fmtPatente(v)}); ultimaClave = ''; render();
+  window.scrollTo({top:0, behavior:'smooth'}); buscarPat();
 }
 function aManual(nota, pre={}){
   conTransicion('fwd', ()=>{ Object.assign(S, {patEstado:'manual', marca:'', modelo:'', anio:'', vid:'', patNota:nota}, pre); S.anim='fwd'; render(true); });
@@ -1459,6 +1466,7 @@ document.addEventListener('click', ev => {
   else if (d.cppartido){ if (d.cppartido==='otro'){ S.partido='otro'; S.cpEstado='fuera'; render(); } else if (d.cppartido==='Ciudad de Buenos Aires'){ S.cpEstado='barrio'; render(); } else { S.partido = d.cppartido; S.localidad = ''; qAvanzar(); } }
   else if (d.ejemplo==='auto'){ ejemploAuto(); go('estado'); }
   else if ('pbuscar' in d){ buscarPat(); }
+  else if ('cierrepat' in d){ cierreCotizar(); }   // 19/10: cotizador del cierre del inicio
   else if (d.pejemplo){ S.patente = fmtPatente(d.pejemplo); S.patEstado = ''; buscarPat(); }
   else if (d.pcand){ S.patSel = d.pcand; render(); }
   else if ('pconf' in d){ if (!S.patSel || qLock) return; const m = S.patM, vid = S.patSel;
@@ -1541,6 +1549,7 @@ document.addEventListener('change', ev => {
   else if (t.id==='c_cons'){ S.consentTilde=t.checked; render(); }
 });
 document.addEventListener('keydown', ev => {
+  if (ev.key==='Enter' && ev.target.id==='cierrePat') cierreCotizar();
   if (ev.key==='Enter' && ev.target.id==='c_patente'){ const b=$('[data-pbuscar]'); if (b && !b.disabled) b.click(); }
   if (ev.key==='Enter' && ev.target.id==='r_cod'){ const b=$('#r_codgo'); if (b && !b.disabled) b.click(); }
   if (ev.key==='Enter' && ev.target.id==='a_cp'){ const b=$('[data-cpbuscar]'); if (b && !b.disabled) b.click(); }
@@ -1550,6 +1559,7 @@ document.addEventListener('input', ev => {
   if (t.id==='s_km'){ const dgt = t.value.replace(/\D/g,'').slice(0,7); S.km = dgt ? KM(+dgt) : ''; t.value = S.km;
     const b = $('[data-go="rango1"]'); const km = kmNum(); if (b) b.disabled = !(S.vid && S.km!=='' && km<=600000);
     $('#e_km').textContent = km>600000 ? 'Revisá los kilómetros: tiene que ser un número entre 0 y 600.000.' : ''; }
+  else if (t.id==='cierrePat'){ const pos = t.selectionStart; t.value = t.value.toUpperCase().replace(/[^A-Z0-9 .-]/g,'').slice(0,10); t.setSelectionRange(pos,pos); const e = $('#cierreErr'); if (e && e.classList.contains('err')){ e.classList.remove('err'); e.textContent = 'Gratis y sin compromiso. Las agencias no ven tu patente.'; } }
   else if (t.id==='c_patente'){ const pos = t.selectionStart; S.patente = t.value.toUpperCase().replace(/[^A-Z0-9 .-]/g,'').slice(0,10); t.value = S.patente; t.setSelectionRange(pos,pos);
     $('#e_cpat').textContent = normPatente(S.patente).length>=6 && !patOk(S.patente) ? 'Revisá la patente: tiene que ser como ABC 123 o AB 123 CD.' : '';
     const b = $('[data-pbuscar]'); if (b) b.disabled = !patOk(S.patente); }
@@ -1619,6 +1629,7 @@ function modoPrueba(on){ try { if (on) localStorage.setItem('yacar.prueba','1');
   if (/#(sin)?prueba\b/.test(location.hash)) try { history.replaceState(null, '', location.pathname + location.search); } catch(e){}
   const habia = recuperar();
   render();
+  document.querySelectorAll('.pimg').forEach(f => { if (/data:/.test(getComputedStyle(f).backgroundImage)) f.classList.add('confoto'); });   // 19/10: con foto, sin dibujo
   if (habia && !EN_INICIO.includes(S.paso)) aviso('Seguís donde quedaste.');
   cargarFotosGuardadas();
   let toques = 0, tToques = 0;   // salir del modo prueba: 5 toques seguidos en "© 2026 Yacar"

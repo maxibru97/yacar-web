@@ -438,3 +438,12 @@
 .transfp .kicker{display:block;margin-bottom:4px}
 .bidpanel .linkbtn[data-act=atransf],.facc .linkbtn[data-act=atransf]{display:inline-block;margin-top:10px}
 
+/* 20/10: precio actual visible, máximo oculto, cartel del mínimo, fee tachado y alerta de oferta baja */
+.bpmin{border-bottom:1px solid var(--line);padding-bottom:12px}
+.bpmin small{display:block}
+.minok{display:flex;gap:8px;align-items:center;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:var(--ok-soft);color:#0F4D2C;font-size:14px;font-weight:600}
+.minok svg{flex:none;width:20px;height:20px}
+.bpmia.pierde{background:var(--bad-soft)}
+.bpmia.pierde small{color:#6E1A12;font-weight:600}
+s.tachado{color:var(--muted);text-decoration-thickness:2px;margin-right:4px}
+.malerta{margin-top:12px;font-size:15px}

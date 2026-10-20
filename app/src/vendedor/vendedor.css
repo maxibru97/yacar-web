@@ -48,7 +48,10 @@ html{scroll-padding-top:76px}
 }
 
 /* inicio: foto del auto bajo el verde de Yacar, propuesta de valor arriba y la patente enseguida */
-.hero{position:relative;color:#fff;background:linear-gradient(180deg,rgba(13,46,32,.86) 0%,rgba(18,63,44,.80) 45%,rgba(12,42,29,.94) 100%),url(/*@foto:p_34izq.jpg*/"") center 30%/cover no-repeat var(--brand)}
+/* 20/10: foto del hero nueva (Gemini, gwyv1p: un vecino con su auto en una calle arbolada) y velo más liviano para que se vea:
+   oscuro a la izquierda, donde va el texto, y más claro en el medio, donde está la persona. */
+.hero{position:relative;color:#fff;background:linear-gradient(90deg,rgba(10,38,26,.92) 0%,rgba(13,46,32,.78) 34%,rgba(13,46,32,.38) 58%,rgba(13,46,32,.62) 100%),linear-gradient(180deg,rgba(12,42,29,0) 55%,rgba(12,42,29,.75) 100%),var(--fotohero) center 45%/cover no-repeat var(--brand)}
+:root{--fotohero:url(/*@foto:hero.jpg*/"")}
 .hero .wrap{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,440px);grid-template-rows:auto 1fr;grid-template-areas:"copy card" "bajo card";column-gap:56px;align-items:start;padding-block:72px 80px}
 .herocopy{grid-area:copy;display:flex;flex-direction:column;gap:18px;padding-top:12px}
 #slotHero{grid-area:card;min-width:0}
@@ -61,7 +64,7 @@ html{scroll-padding-top:76px}
 .ticks li{display:flex;align-items:center;gap:8px}
 .nota24{font-size:14px;color:#C6D4CA;margin:0;max-width:52ch}
 @media (max-width:860px){
-  .hero{background-position:center top}
+  .hero{background-image:linear-gradient(180deg,rgba(13,46,32,.84) 0%,rgba(13,46,32,.70) 28%,rgba(12,42,29,.92) 58%,rgba(12,42,29,.97) 100%),var(--fotohero);background-position:center top,24% top;background-size:auto,auto 540px;background-repeat:no-repeat}
   .hero .wrap{grid-template-columns:minmax(0,1fr);grid-template-areas:"copy" "card" "bajo";padding-block:22px 36px;row-gap:18px}
   .herocopy{gap:10px;padding-top:0;text-align:left}
   .hero-pill{font-size:13px;padding:4px 12px}
@@ -703,6 +706,9 @@ button.cam-alt{appearance:none;border:0;background:none;padding:8px 0;font:inher
 .tq-lista h3{font-size:21px;font-weight:600;color:#fff}
 .tq-lista p{margin:4px 0 0;color:#C4D3C6;font-size:16px}
 @media (max-width:860px){.tranquilo .wrap{grid-template-columns:1fr}}
+/* 20/10: foto de un vendedor tranquilo con su auto (Gemini, 9x1gvj), abajo del título. Opcional: sin el archivo no se ve. */
+.tq-foto{margin:32px 0 0;aspect-ratio:4/3;border-radius:var(--r-card);background:url(/*@foto?:tranquilo.jpg*/"") center/cover no-repeat;max-width:520px}
+@media (max-width:860px){.tq-foto{aspect-ratio:16/10;margin-top:22px}}
 
 /* Preguntas: el + en un círculo lima, para que se vea que se toca */
 details.faq summary::after{content:"+";width:32px;height:32px;border-radius:50%;background:var(--cta);color:var(--cta-ink);display:grid;place-items:center;font-size:22px;font-weight:600;line-height:1}

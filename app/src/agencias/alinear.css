@@ -18,7 +18,8 @@
 .navrow .btn,.noteacts .btn{min-height:0}
 
 /* hero: misma grilla, tamaños y foto debajo del verde */
-.heroband{position:relative;background:linear-gradient(180deg,rgba(13,46,32,.88) 0%,rgba(18,63,44,.82) 45%,rgba(12,42,29,.95) 100%),url(/*@foto:y1_34dd.jpg*/"") center 45%/cover no-repeat var(--brand)}
+/* 20/10: velo más liviano en el medio para que se vea el 208 de la subasta (como el hero del vendedor) */
+.heroband{position:relative;background:linear-gradient(90deg,rgba(10,38,26,.93) 0%,rgba(13,46,32,.80) 36%,rgba(13,46,32,.50) 60%,rgba(13,46,32,.72) 100%),linear-gradient(180deg,rgba(12,42,29,0) 55%,rgba(12,42,29,.8) 100%),url(/*@foto:y1_34dd.jpg*/"") center 45%/cover no-repeat var(--brand)}
 .heroband .wrap{padding-block:72px 80px;gap:40px 56px}
 .herocopy{gap:18px;padding-top:12px}
 .hero-pill{margin:0;align-self:flex-start;font-size:14px;font-weight:600;color:var(--cta);background:rgba(184,224,74,.12);border:1px solid rgba(184,224,74,.35);border-radius:999px;padding:6px 14px}

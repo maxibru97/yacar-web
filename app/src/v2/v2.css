@@ -1,0 +1,28 @@
+/* ---------- v2 (24/10/2026): quiénes somos, contacto, barra fija del celular, tabla más corta ---------- */
+.quienes .wrap{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:56px;align-items:center}
+.qs-foto{margin:0;position:relative}
+.qs-foto img{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:var(--r-card);background:var(--sunk)}
+.qs-foto figcaption{position:absolute;left:16px;bottom:16px;background:rgba(18,63,44,.92);color:var(--brand-ink);border-radius:14px;padding:10px 14px;font-size:14px;line-height:1.3}
+.qs-foto figcaption b{display:block;color:#fff;font-family:var(--f-display);font-size:17px}
+.qs-texto{display:flex;flex-direction:column;gap:16px;max-width:560px}
+.qs-texto p{margin:0;font-size:19px;line-height:1.5;color:var(--muted)}
+.qs-botones{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;margin-top:8px}
+.qs-wa{gap:10px}
+.qs-mail{color:var(--accent-2);font-weight:600;font-size:17px}
+.pie-contacto{display:flex;flex-wrap:wrap;gap:6px 20px;margin-top:6px!important}
+.pie-contacto a{display:inline-flex;align-items:center;gap:6px;min-height:32px;font-weight:600;text-decoration:none}
+.barcta{display:none}
+@media (max-width:860px){
+  .quienes .wrap{grid-template-columns:minmax(0,1fr);gap:28px}
+  .qs-foto{max-width:420px}
+  .qs-texto p{font-size:17px}
+  /* tabla: 3 filas en el celular (cuánto tarda, mover el auto, quién te compra) */
+  .cmp tbody tr:nth-child(3){display:none}
+  .barcta{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:25;gap:12px;align-items:center;justify-content:space-between;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:rgba(18,63,44,.97);color:var(--brand-muted);box-shadow:0 -6px 24px rgba(0,0,0,.18);transform:translateY(110%);transition:transform .25s ease}
+  .barcta span{font-size:14px;line-height:1.25}
+  .barcta span b{display:block;color:#fff;font-size:15px}
+  .barcta .cta{flex:none;padding:12px 18px;font-size:16px;min-height:44px}
+  body.con-barra .barcta{transform:none}
+  body.con-barra .protobtn{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  body.con-barra .pie .wrap{padding-bottom:110px}
+}

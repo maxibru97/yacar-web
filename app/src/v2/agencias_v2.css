@@ -1,3 +1,7 @@
 /* v2 (24/10/2026): botón de WhatsApp en el hero y el cierre */
 .btn.wa{gap:8px}
 .lema a{color:inherit}
+/* 24/10 (Maxi): sin los dibujitos encima de las fotos de los pasos y menos espacio entre secciones */
+.pimg .pil{display:none}
+.sec{padding-block:64px}
+@media (max-width:860px){.sec{padding-block:48px}}

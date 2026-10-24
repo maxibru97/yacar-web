@@ -26,3 +26,21 @@
   body.con-barra .protobtn{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
   body.con-barra .pie .wrap{padding-bottom:110px}
 }
+/* 24/10 (Maxi): sin los dibujitos encima de las fotos de los pasos, menos espacio entre secciones, cotizador más corto */
+.pimg .pil{display:none}
+.sec{padding-block:72px}
+.sec.gris{padding-top:56px}
+.subasta{margin-bottom:40px;gap:24px 48px}
+.celu-marco{width:270px}
+.protopleg{display:block}
+.protopleg summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--proto)}
+.protopleg summary::-webkit-details-marker{display:none}
+.protopleg summary::after{content:"+";margin-left:auto;font-size:18px;line-height:1}
+.protopleg[open] summary::after{content:"−"}
+.protolista{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.autito.yacare{bottom:0}
+@media (max-width:860px){.sec{padding-block:56px}.sec.gris{padding-top:48px}}
+@media (min-width:861px){.subasta{align-items:start}.subasta .intro{padding-top:56px}}
+.autito.yacare{animation-name:manejarYacare}
+@keyframes manejarYacare{from{left:0}to{left:calc(100% - 64px)}}
+.protopleg summary .tag{white-space:nowrap}
